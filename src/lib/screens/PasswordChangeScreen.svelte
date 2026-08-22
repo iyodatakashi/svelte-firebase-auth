@@ -1,0 +1,148 @@
+<script lang="ts">
+	import { Button, Input } from '@14ch/svelte-ui';
+	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
+	import { resolveMessages } from '$lib/messages/ja';
+	import type { PasswordChangeScreenProps } from '$lib/models/auth/auth.types';
+
+	let {
+		store,
+		messages: overrides,
+		header,
+		onChanged,
+		onCancel
+	}: PasswordChangeScreenProps = $props();
+
+	const messages = $derived(resolveMessages(overrides));
+
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let errorMessage = $state<string | null>(null);
+	let hasChanged = $state(false);
+	let isSubmitting = $state(false);
+
+	const submit = async (event: SubmitEvent) => {
+		event.preventDefault();
+		if (isSubmitting) {
+			return;
+		}
+		isSubmitting = true;
+		errorMessage = null;
+		hasChanged = false;
+
+		const result = await store.changePassword(currentPassword, newPassword);
+		isSubmitting = false;
+
+		if (result.ok) {
+			hasChanged = true;
+			onChanged();
+			return;
+		}
+		// 現在のパスワードの誤りかどうかの判別も、文脈を渡してこの関数に任せる
+		errorMessage = authErrorMessageOf(result.error, messages, 'password-change');
+	};
+</script>
+
+<section class="password-change-screen">
+	{#if header}
+		<div class="password-change-screen__header">{@render header()}</div>
+	{/if}
+
+	<h2 class="password-change-screen__title">{messages.passwordChangeTitle}</h2>
+
+	<form class="password-change-screen__form" onsubmit={submit} novalidate>
+		<div class="password-change-screen__field">
+			<label class="password-change-screen__label" for="password-change-current">
+				{messages.currentPasswordLabel}
+			</label>
+			<Input
+				id="password-change-current"
+				type="password"
+				autocomplete="current-password"
+				enablePasswordVisibilityToggle
+				fullWidth
+				bind:value={currentPassword}
+				disabled={isSubmitting}
+			/>
+		</div>
+
+		<div class="password-change-screen__field">
+			<label class="password-change-screen__label" for="password-change-new">
+				{messages.newPasswordLabel}
+			</label>
+			<Input
+				id="password-change-new"
+				type="password"
+				autocomplete="new-password"
+				enablePasswordVisibilityToggle
+				fullWidth
+				bind:value={newPassword}
+				disabled={isSubmitting}
+			/>
+		</div>
+
+		{#if hasChanged}
+			<p class="password-change-screen__notice" role="status">{messages.passwordChangeDone}</p>
+		{/if}
+		{#if errorMessage}
+			<p class="password-change-screen__error" role="alert">{errorMessage}</p>
+		{/if}
+
+		<div class="password-change-screen__actions">
+			<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
+				{messages.passwordChangeSubmit}
+			</Button>
+			<Button onclick={onCancel} disabled={isSubmitting}>
+				{messages.passwordChangeCancel}
+			</Button>
+		</div>
+	</form>
+</section>
+
+<style>
+	.password-change-screen {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+		color: var(--svelte-ui-text-color);
+	}
+
+	.password-change-screen__title {
+		margin: 0;
+		font-size: var(--svelte-ui-font-size-xl);
+	}
+
+	.password-change-screen__form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.password-change-screen__field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.password-change-screen__label {
+		font-size: var(--svelte-ui-font-size-sm);
+		color: var(--svelte-ui-text-subtle-color);
+	}
+
+	.password-change-screen__notice {
+		margin: 0;
+		font-size: var(--svelte-ui-font-size-sm);
+		color: var(--svelte-ui-success-color);
+	}
+
+	.password-change-screen__error {
+		margin: 0;
+		font-size: var(--svelte-ui-font-size-sm);
+		color: var(--svelte-ui-error-color);
+	}
+
+	.password-change-screen__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+</style>
