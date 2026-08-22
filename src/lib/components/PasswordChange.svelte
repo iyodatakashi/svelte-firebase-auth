@@ -2,15 +2,9 @@
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { PasswordChangeScreenProps } from '$lib/models/auth/auth.types';
+	import type { PasswordChangeProps } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onChanged,
-		onCancel
-	}: PasswordChangeScreenProps = $props();
+	let { store, messages: overrides, header, onChanged, onCancel }: PasswordChangeProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -42,16 +36,16 @@
 	};
 </script>
 
-<section class="password-change-screen">
+<section class="password-change">
 	{#if header}
-		<div class="password-change-screen__header">{@render header()}</div>
+		<div class="password-change__header">{@render header()}</div>
 	{/if}
 
-	<h2 class="password-change-screen__title">{messages.passwordChangeTitle}</h2>
+	<h2 class="password-change__title">{messages.passwordChangeTitle}</h2>
 
-	<form class="password-change-screen__form" onsubmit={submit} novalidate>
-		<div class="password-change-screen__field">
-			<label class="password-change-screen__label" for="password-change-current">
+	<form class="password-change__form" onsubmit={submit} novalidate>
+		<div class="password-change__field">
+			<label class="password-change__label" for="password-change-current">
 				{messages.currentPasswordLabel}
 			</label>
 			<Input
@@ -65,8 +59,8 @@
 			/>
 		</div>
 
-		<div class="password-change-screen__field">
-			<label class="password-change-screen__label" for="password-change-new">
+		<div class="password-change__field">
+			<label class="password-change__label" for="password-change-new">
 				{messages.newPasswordLabel}
 			</label>
 			<Input
@@ -81,13 +75,13 @@
 		</div>
 
 		{#if hasChanged}
-			<p class="password-change-screen__notice" role="status">{messages.passwordChangeDone}</p>
+			<p class="password-change__notice" role="status">{messages.passwordChangeDone}</p>
 		{/if}
 		{#if errorMessage}
-			<p class="password-change-screen__error" role="alert">{errorMessage}</p>
+			<p class="password-change__error" role="alert">{errorMessage}</p>
 		{/if}
 
-		<div class="password-change-screen__actions">
+		<div class="password-change__actions">
 			<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
 				{messages.passwordChangeSubmit}
 			</Button>
@@ -99,48 +93,48 @@
 </section>
 
 <style>
-	.password-change-screen {
+	.password-change {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
 	}
 
-	.password-change-screen__title {
+	.password-change__title {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-xl);
 	}
 
-	.password-change-screen__form {
+	.password-change__form {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
 
-	.password-change-screen__field {
+	.password-change__field {
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
 	}
 
-	.password-change-screen__label {
+	.password-change__label {
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-text-subtle-color);
 	}
 
-	.password-change-screen__notice {
+	.password-change__notice {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-success-color);
 	}
 
-	.password-change-screen__error {
+	.password-change__error {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
 	}
 
-	.password-change-screen__actions {
+	.password-change__actions {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;

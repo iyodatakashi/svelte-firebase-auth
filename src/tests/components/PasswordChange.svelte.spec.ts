@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import PasswordChangeScreen from '$lib/screens/PasswordChangeScreen.svelte';
+import PasswordChange from '$lib/components/PasswordChange.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { failureOf, fakeStore } from '../support/fakeStore.svelte';
 
@@ -8,7 +8,7 @@ const setup = async () => {
 	const { store } = fakeStore();
 	const onChanged = vi.fn();
 	const onCancel = vi.fn();
-	const screen = await render(PasswordChangeScreen, { props: { store, onChanged, onCancel } });
+	const screen = await render(PasswordChange, { props: { store, onChanged, onCancel } });
 	return { screen, store, onChanged, onCancel };
 };
 
@@ -22,7 +22,7 @@ const fillAndSubmit = async (
 	await screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }).click();
 };
 
-describe('PasswordChangeScreen — 要件 6.5', () => {
+describe('PasswordChange — 要件 6.5', () => {
 	it('現在のパスワードと新しいパスワードを受け取り、変更を実行する', async () => {
 		const { screen, store, onChanged } = await setup();
 		await fillAndSubmit(screen);
@@ -38,7 +38,7 @@ describe('PasswordChangeScreen — 要件 6.5', () => {
 	});
 });
 
-describe('PasswordChangeScreen の失敗 — 要件 6.2, 6.3', () => {
+describe('PasswordChange の失敗 — 要件 6.2, 6.3', () => {
 	it('現在のパスワードが誤っていれば、専用の案内を示す', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
@@ -94,7 +94,7 @@ describe('PasswordChangeScreen の失敗 — 要件 6.2, 6.3', () => {
 	});
 });
 
-describe('PasswordChangeScreen の導線 — 要件 6.8', () => {
+describe('PasswordChange の導線 — 要件 6.8', () => {
 	it('変更を取りやめる手段を提供し、その要求を通知する', async () => {
 		const { screen, onCancel } = await setup();
 		await screen.getByRole('button', { name: jaMessages.passwordChangeCancel }).click();

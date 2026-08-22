@@ -2,23 +2,27 @@
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { SignInScreenProps } from '$lib/models/auth/auth.types';
+	import type { AuthError, SignUpProps } from '$lib/models/auth/auth.types';
 
 	let {
 		store,
 		messages: overrides,
 		header,
-		onSignedIn,
-		onRequestPasswordReset,
-		onRequestSignUp
-	}: SignInScreenProps = $props();
+		onSignedUp,
+		onRequestSignIn,
+		onRequestPasswordReset
+	}: SignUpProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
 	let email = $state('');
 	let password = $state('');
-	let errorMessage = $state<string | null>(null);
+	let failure = $state<AuthError | null>(null);
 	let isSubmitting = $state(false);
+
+	const errorMessage = $derived(failure ? authErrorMessageOf(failure, messages, 'sign-up') : null);
+	// 既に使われているメールアドレスのときだけ、パスワードの再設定へ導く
+	const canOfferPasswordReset = $derived(failure?.kind === 'email-already-in-use');
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault();
@@ -26,32 +30,31 @@
 			return;
 		}
 		isSubmitting = true;
-		errorMessage = null;
+		failure = null;
 
-		const result = await store.signIn(email, password);
+		const result = await store.signUp(email, password);
 		isSubmitting = false;
 
 		if (result.ok) {
-			onSignedIn();
+			onSignedUp();
 			return;
 		}
-		// 語彙ごとの分岐も文言もこの画面は持たない
-		errorMessage = authErrorMessageOf(result.error, messages, 'sign-in');
+		failure = result.error;
 	};
 </script>
 
-<section class="sign-in-screen">
+<section class="sign-up">
 	{#if header}
-		<div class="sign-in-screen__header">{@render header()}</div>
+		<div class="sign-up__header">{@render header()}</div>
 	{/if}
 
-	<h2 class="sign-in-screen__title">{messages.signInTitle}</h2>
+	<h2 class="sign-up__title">{messages.signUpTitle}</h2>
 
-	<form class="sign-in-screen__form" onsubmit={submit} novalidate>
-		<div class="sign-in-screen__field">
-			<label class="sign-in-screen__label" for="sign-in-email">{messages.emailLabel}</label>
+	<form class="sign-up__form" onsubmit={submit} novalidate>
+		<div class="sign-up__field">
+			<label class="sign-up__label" for="sign-up-email">{messages.emailLabel}</label>
 			<Input
-				id="sign-in-email"
+				id="sign-up-email"
 				type="email"
 				autocomplete="email"
 				fullWidth
@@ -60,12 +63,12 @@
 			/>
 		</div>
 
-		<div class="sign-in-screen__field">
-			<label class="sign-in-screen__label" for="sign-in-password">{messages.passwordLabel}</label>
+		<div class="sign-up__field">
+			<label class="sign-up__label" for="sign-up-password">{messages.passwordLabel}</label>
 			<Input
-				id="sign-in-password"
+				id="sign-up-password"
 				type="password"
-				autocomplete="current-password"
+				autocomplete="new-password"
 				enablePasswordVisibilityToggle
 				fullWidth
 				bind:value={password}
@@ -74,63 +77,63 @@
 		</div>
 
 		{#if errorMessage}
-			<p class="sign-in-screen__error" role="alert">{errorMessage}</p>
+			<p class="sign-up__error" role="alert">{errorMessage}</p>
 		{/if}
 
 		<Button type="submit" variant="filled" fullWidth loading={isSubmitting} disabled={isSubmitting}>
-			{messages.signInSubmit}
+			{messages.signUpSubmit}
 		</Button>
 	</form>
 
-	<div class="sign-in-screen__links">
-		<Button onclick={onRequestPasswordReset} disabled={isSubmitting}>
-			{messages.signInToPasswordReset}
-		</Button>
-		{#if store.canSelfRegister && onRequestSignUp}
-			<Button onclick={onRequestSignUp} disabled={isSubmitting}>
-				{messages.signInToSignUp}
+	<div class="sign-up__links">
+		{#if canOfferPasswordReset}
+			<Button onclick={onRequestPasswordReset} disabled={isSubmitting}>
+				{messages.signUpToPasswordReset}
 			</Button>
 		{/if}
+		<Button onclick={onRequestSignIn} disabled={isSubmitting}>
+			{messages.signUpToSignIn}
+		</Button>
 	</div>
 </section>
 
 <style>
-	.sign-in-screen {
+	.sign-up {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
 	}
 
-	.sign-in-screen__title {
+	.sign-up__title {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-xl);
 	}
 
-	.sign-in-screen__form {
+	.sign-up__form {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
 
-	.sign-in-screen__field {
+	.sign-up__field {
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
 	}
 
-	.sign-in-screen__label {
+	.sign-up__label {
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-text-subtle-color);
 	}
 
-	.sign-in-screen__error {
+	.sign-up__error {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
 	}
 
-	.sign-in-screen__links {
+	.sign-up__links {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;

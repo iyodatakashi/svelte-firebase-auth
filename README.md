@@ -86,7 +86,7 @@ Firebase の初期化は組み込み側が行い、`Auth` を渡す。ライブ�
 
 ```svelte
 <script lang="ts">
-	import { SignInScreen } from '@14ch/svelte-firebase-auth';
+	import { SignIn } from '@14ch/svelte-firebase-auth';
 
 	let screen = $state<'sign-in' | 'sign-up' | 'password-reset' | 'signed-in'>('sign-in');
 </script>
@@ -94,7 +94,7 @@ Firebase の初期化は組み込み側が行い、`Auth` を渡す。ライブ�
 {#if !store.isResolved}
 	<p>読み込み中…</p>
 {:else if screen === 'sign-in'}
-	<SignInScreen
+	<SignIn
 		{store}
 		onSignedIn={() => (screen = 'signed-in')}
 		onRequestPasswordReset={() => (screen = 'password-reset')}
@@ -154,7 +154,7 @@ if (!result.ok) {
 指定した項目だけが差し替わり、指定のない項目は既定の日本語を使う。
 
 ```svelte
-<SignInScreen
+<SignIn
 	{store}
 	messages={{
 		signInSubmit: 'ログイン',
@@ -173,7 +173,7 @@ if (!result.ok) {
 	<h1>アプリ名</h1>
 {/snippet}
 
-<SignInScreen {store} {header} ... />
+<SignIn {store} {header} ... />
 ```
 
 ## 担当しないこと

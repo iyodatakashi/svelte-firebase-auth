@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import PasswordResetScreen from '$lib/screens/PasswordResetScreen.svelte';
+import PasswordReset from '$lib/components/PasswordReset.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { failureOf, fakeStore } from '../support/fakeStore.svelte';
 
@@ -8,7 +8,7 @@ const setup = async () => {
 	const { store } = fakeStore();
 	const onRequested = vi.fn();
 	const onRequestSignIn = vi.fn();
-	const screen = await render(PasswordResetScreen, {
+	const screen = await render(PasswordReset, {
 		props: { store, onRequested, onRequestSignIn }
 	});
 	return { screen, store, onRequested, onRequestSignIn };
@@ -22,7 +22,7 @@ const request = async (
 	await screen.getByRole('button', { name: jaMessages.passwordResetSubmit }).click();
 };
 
-describe('PasswordResetScreen — 要件 7.2, 7.3, 7.4', () => {
+describe('PasswordReset — 要件 7.2, 7.3, 7.4', () => {
 	it('メールを送ったことと、迷惑メールフォルダの確認を示す', async () => {
 		const { screen } = await setup();
 		await request(screen);
@@ -60,7 +60,7 @@ describe('PasswordResetScreen — 要件 7.2, 7.3, 7.4', () => {
 	});
 });
 
-describe('PasswordResetScreen の失敗 — 要件 7.6', () => {
+describe('PasswordReset の失敗 — 要件 7.6', () => {
 	it('要求が受け付けられなくなったら、間隔を空けるよう示す', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.sendPasswordReset).mockResolvedValueOnce(failureOf('too-many-requests'));
@@ -93,7 +93,7 @@ describe('PasswordResetScreen の失敗 — 要件 7.6', () => {
 	});
 });
 
-describe('PasswordResetScreen の導線 — 要件 7.5', () => {
+describe('PasswordReset の導線 — 要件 7.5', () => {
 	it('サインインへ戻る導線を置き、その要求を通知する', async () => {
 		const { screen, onRequestSignIn } = await setup();
 		await screen.getByRole('button', { name: jaMessages.passwordResetToSignIn }).click();

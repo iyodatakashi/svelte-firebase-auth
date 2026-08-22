@@ -4,7 +4,7 @@
 
 **`src/lib/` が配布物、`src/routes/` はショーケース。** この2つを混ぜない。`routes` に書いたものは組み込み側に届かず、`lib` に書いたショーケース専用のコードは配布物を汚す。
 
-`lib` の中は、画面（screens）・状態と操作（stores）・ドメインの型と純関数（models）で責務を分ける。`markn` / `logotope` の構成方針に準拠する。同一の開発者が行き来するため、置き場所と書き方を推測できる状態を優先する。
+`lib` の中は、画面（components）・状態と操作（stores）・ドメインの型と純関数（models）で責務を分ける。`markn` / `logotope` の構成方針に準拠する。同一の開発者が行き来するため、置き場所と書き方を推測できる状態を優先する。
 
 `src/lib/server/` は使わない（ブラウザで動くライブラリのため）。
 
@@ -17,17 +17,17 @@
 ```typescript
 export { createAuthStore } from './stores/auth.svelte';
 export { normalizeEmail } from './models/auth/auth';
-export { default as SignInScreen } from './screens/SignInScreen.svelte';
+export { default as SignIn } from './components/SignIn.svelte';
 export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/auth/auth.types';
 ```
 
-- **深い import を組み込み側に強いない。** `@14ch/svelte-firebase-auth/dist/screens/...` を書かせる形にしない
+- **深い import を組み込み側に強いない。** `@14ch/svelte-firebase-auth/dist/components/...` を書かせる形にしない
 - **公開面を変えたら、組み込み側の再検証の契機になる。** 型・エラーの語彙・画面の props の変更は破壊的変更として扱う
 
-### screens（`src/lib/screens/`）
+### components（`src/lib/components/`）
 
 **Purpose**: 画面の実体。マークアップと画面固有のロジック
-**Example**: `src/lib/screens/SignInScreen.svelte`
+**Example**: `src/lib/components/SignIn.svelte`
 
 - **遷移を持たない。** 完了・失敗は props のコールバックで組み込み側へ返す
 - **状態は store から受け取る。** 画面が `Auth` を直接呼ばない
@@ -64,11 +64,11 @@ export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/a
 
 ## Naming Conventions
 
-- **Svelte コンポーネント**: PascalCase（`SignInScreen.svelte`）
+- **Svelte コンポーネント**: PascalCase（`SignIn.svelte`）
 - **TypeScript ファイル**: kebab-case。ただし store と models 配下は camelCase + 用途サフィックス（`auth.svelte.ts` / `auth.types.ts`）
 - **型**: PascalCase（`AuthStore`, `AuthErrorKind`）
-- **画面のコンポーネント名は `*Screen` で揃える。** 組み込み側では自前の画面と並ぶため、由来が名前から分かる状態にする
-- **props の型は `<画面名>Props`**（`SignInScreenProps`）
+- **コンポーネント名に `Screen` のような種別のサフィックスを付けない。** このパッケージが component として出すものは全部が画面であり、名前で言い直しても情報が増えない。出自は import 文が示す（組み込み側は自分の画面を `*Page` などで名付けている）
+- **props の型は `<コンポーネント名>Props`**（`SignInProps`）。共通の基底は `AuthBaseProps`
 
 ## 型定義の規約（重要）
 
@@ -102,7 +102,7 @@ import AuthField from './AuthField.svelte';
 ## CSS / スタイル記法
 
 - **BEM 記法で書く**（Block・Element `__`・Modifier `--`）
-- **Block 名はコンポーネントの PascalCase 名を kebab-case に変換する**（`SignInScreen.svelte` → `.sign-in-screen`）
+- **Block 名はコンポーネントの PascalCase 名を kebab-case に変換する**（`SignIn.svelte` → `.sign-in`）
 - **見た目のための修飾タグ（`<strong>` / `<b>` / `<em>` / `<small>` など）を使わない。** 強調・装飾はクラスと CSS で表現する
 - **スタイルはそのコンポーネントの `<style>` に書く。** 見た目はそのファイル内で完結させる
 - **意匠の値は `@14ch/svelte-ui` のトークン（`--svelte-ui-*`）を参照する。** 色・フォントサイズ・意匠としての余白や寸法を `#333` `14px` のような生値で書かない。**ライブラリ独自のパレットを持たない** — 組み込み側のテーマに従うため。必要なトークンが無ければ `@14ch/svelte-ui` 側に足す（→ `tech.md`）

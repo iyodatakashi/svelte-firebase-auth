@@ -140,7 +140,7 @@ export type AuthMessagesOverride = Partial<Omit<AuthMessages, 'errors'>> & {
 // 画面の props
 // =============================================================================
 
-export interface AuthScreenProps {
+export interface AuthBaseProps {
 	readonly store: AuthStore;
 	/** 渡さなかった項目は同梱の日本語を使う */
 	readonly messages?: AuthMessagesOverride;
@@ -148,32 +148,32 @@ export interface AuthScreenProps {
 	readonly header?: Snippet;
 }
 
-export interface SignInScreenProps extends AuthScreenProps {
+export interface SignInProps extends AuthBaseProps {
 	readonly onSignedIn: () => void;
 	readonly onRequestPasswordReset: () => void;
 	/** 自由登録が許可されているときだけ呼ばれる */
 	readonly onRequestSignUp?: () => void;
 }
 
-export interface SignUpScreenProps extends AuthScreenProps {
+export interface SignUpProps extends AuthBaseProps {
 	readonly onSignedUp: () => void;
 	readonly onRequestSignIn: () => void;
 	readonly onRequestPasswordReset: () => void;
 }
 
-export interface VerifyEmailScreenProps extends AuthScreenProps {
+export interface VerifyEmailProps extends AuthBaseProps {
 	readonly onVerified: () => void;
 	readonly onSignOut: () => void;
 	/** サインアウトを終えてから呼ばれる */
 	readonly onRequestSignUpWithAnotherEmail: () => void;
 }
 
-export interface PasswordChangeScreenProps extends AuthScreenProps {
+export interface PasswordChangeProps extends AuthBaseProps {
 	readonly onChanged: () => void;
 	readonly onCancel: () => void;
 }
 
-export interface PasswordResetScreenProps extends AuthScreenProps {
+export interface PasswordResetProps extends AuthBaseProps {
 	readonly onRequested: () => void;
 	readonly onRequestSignIn: () => void;
 }

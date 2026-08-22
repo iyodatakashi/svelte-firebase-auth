@@ -1,6 +1,6 @@
 # Implementation Plan
 
-依存の向きは `models → messages → screens` と `models → stores → screens`。この順に積む。
+依存の向きは `models → messages → components` と `models → stores → components`。この順に積む。
 
 ## 1. 土台の整備
 

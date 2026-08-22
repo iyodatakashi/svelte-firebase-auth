@@ -3,7 +3,7 @@
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
 	import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
-	import type { VerifyEmailScreenProps } from '$lib/models/auth/auth.types';
+	import type { VerifyEmailProps } from '$lib/models/auth/auth.types';
 
 	let {
 		store,
@@ -12,7 +12,7 @@
 		onVerified,
 		onSignOut,
 		onRequestSignUpWithAnotherEmail
-	}: VerifyEmailScreenProps = $props();
+	}: VerifyEmailProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -90,26 +90,26 @@
 	};
 </script>
 
-<section class="verify-email-screen">
+<section class="verify-email">
 	{#if header}
-		<div class="verify-email-screen__header">{@render header()}</div>
+		<div class="verify-email__header">{@render header()}</div>
 	{/if}
 
-	<h2 class="verify-email-screen__title">{messages.verifyEmailTitle}</h2>
+	<h2 class="verify-email__title">{messages.verifyEmailTitle}</h2>
 
 	{#if store.email}
-		<p class="verify-email-screen__sent-to">{messages.verifyEmailSentTo(store.email)}</p>
+		<p class="verify-email__sent-to">{messages.verifyEmailSentTo(store.email)}</p>
 	{/if}
-	<p class="verify-email-screen__spam">{messages.verifyEmailCheckSpam}</p>
+	<p class="verify-email__spam">{messages.verifyEmailCheckSpam}</p>
 
 	{#if hasResent}
-		<p class="verify-email-screen__notice" role="status">{messages.verifyEmailResent}</p>
+		<p class="verify-email__notice" role="status">{messages.verifyEmailResent}</p>
 	{/if}
 	{#if errorMessage}
-		<p class="verify-email-screen__error" role="alert">{errorMessage}</p>
+		<p class="verify-email__error" role="alert">{errorMessage}</p>
 	{/if}
 
-	<div class="verify-email-screen__actions">
+	<div class="verify-email__actions">
 		<Button
 			variant="filled"
 			onclick={resend}
@@ -128,41 +128,41 @@
 </section>
 
 <style>
-	.verify-email-screen {
+	.verify-email {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 		color: var(--svelte-ui-text-color);
 	}
 
-	.verify-email-screen__title {
+	.verify-email__title {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-xl);
 	}
 
-	.verify-email-screen__sent-to,
-	.verify-email-screen__spam,
-	.verify-email-screen__notice,
-	.verify-email-screen__error {
+	.verify-email__sent-to,
+	.verify-email__spam,
+	.verify-email__notice,
+	.verify-email__error {
 		margin: 0;
 	}
 
-	.verify-email-screen__spam {
+	.verify-email__spam {
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-text-subtle-color);
 	}
 
-	.verify-email-screen__notice {
+	.verify-email__notice {
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-success-color);
 	}
 
-	.verify-email-screen__error {
+	.verify-email__error {
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
 	}
 
-	.verify-email-screen__actions {
+	.verify-email__actions {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;

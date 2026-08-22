@@ -12,13 +12,13 @@ npm パッケージとして配布する Svelte のライブラリ。実行環�
                                        ↓
               [@14ch/svelte-firebase-auth]
                     ├── stores  → createAuthStore(auth, config)
-                    ├── screens → サインイン / 登録 / 確認待ち / パスワード変更 / 再設定
+                    ├── components → サインイン / 登録 / 確認待ち / パスワード変更 / 再設定
                     └── models  → 型・エラーの写像・normalizeEmail
                                        ↓
                         [Firebase Authentication]
 ```
 
-**依存の向きは一方向で、逆向きを作らない。** `models → stores → screens`。ライブラリから組み込み側へは、コールバックと戻り値でしか働きかけない。
+**依存の向きは一方向で、逆向きを作らない。** `models → stores → components`。ライブラリから組み込み側へは、コールバックと戻り値でしか働きかけない。
 
 ## Core Technologies
 
