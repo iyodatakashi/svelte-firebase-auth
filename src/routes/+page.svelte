@@ -2,20 +2,20 @@
 	import { getContext } from 'svelte';
 	import { Button } from '@14ch/svelte-ui';
 	import {
-		PasswordChangeScreen,
-		PasswordResetScreen,
-		SignInScreen,
-		SignUpScreen,
-		VerifyEmailScreen,
+		PasswordChange,
+		PasswordReset,
+		SignIn,
+		SignUp,
+		VerifyEmail,
 		type AuthStore
 	} from '$lib/index';
 
 	const store = getContext<AuthStore>('authStore');
 
-	type ShowcaseScreen =
+	type ShowcaseView =
 		'sign-in' | 'sign-up' | 'verify-email' | 'password-change' | 'password-reset' | 'signed-in';
 
-	let screen = $state<ShowcaseScreen>('sign-in');
+	let screen = $state<ShowcaseView>('sign-in');
 
 	// 到達の判断は組み込み側の担当。ライブラリは完了を知らせるだけで、遷移は行わない
 	const afterSignedIn = () => {
@@ -35,7 +35,7 @@
 {#if !store.isResolved}
 	<p class="showcase-page__loading">読み込み中…</p>
 {:else if screen === 'sign-in'}
-	<SignInScreen
+	<SignIn
 		{store}
 		{header}
 		onSignedIn={afterSignedIn}
@@ -43,7 +43,7 @@
 		onRequestSignUp={() => (screen = 'sign-up')}
 	/>
 {:else if screen === 'sign-up'}
-	<SignUpScreen
+	<SignUp
 		{store}
 		{header}
 		onSignedUp={() => (screen = 'verify-email')}
@@ -51,7 +51,7 @@
 		onRequestPasswordReset={() => (screen = 'password-reset')}
 	/>
 {:else if screen === 'verify-email'}
-	<VerifyEmailScreen
+	<VerifyEmail
 		{store}
 		{header}
 		onVerified={() => (screen = 'signed-in')}
@@ -59,14 +59,14 @@
 		onRequestSignUpWithAnotherEmail={() => (screen = 'sign-up')}
 	/>
 {:else if screen === 'password-change'}
-	<PasswordChangeScreen
+	<PasswordChange
 		{store}
 		{header}
 		onChanged={() => (screen = 'signed-in')}
 		onCancel={() => (screen = 'signed-in')}
 	/>
 {:else if screen === 'password-reset'}
-	<PasswordResetScreen
+	<PasswordReset
 		{store}
 		{header}
 		onRequested={() => {}}

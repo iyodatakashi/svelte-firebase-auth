@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import VerifyEmailScreen from '$lib/screens/VerifyEmailScreen.svelte';
+import VerifyEmail from '$lib/components/VerifyEmail.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
 import { failureOf, fakeStore } from '../support/fakeStore.svelte';
@@ -10,7 +10,7 @@ const setup = async (email: string | null = 'user@example.com') => {
 	const onVerified = vi.fn();
 	const onSignOut = vi.fn();
 	const onRequestSignUpWithAnotherEmail = vi.fn();
-	const screen = await render(VerifyEmailScreen, {
+	const screen = await render(VerifyEmail, {
 		props: { store, onVerified, onSignOut, onRequestSignUpWithAnotherEmail }
 	});
 	return { screen, store, markVerified, onVerified, onSignOut, onRequestSignUpWithAnotherEmail };
@@ -20,7 +20,7 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-describe('VerifyEmailScreen の提示 — 要件 5.2, 5.3', () => {
+describe('VerifyEmail の提示 — 要件 5.2, 5.3', () => {
 	it('確認メールの送信先のメールアドレスを示す', async () => {
 		const { screen } = await setup();
 		await expect
@@ -34,7 +34,7 @@ describe('VerifyEmailScreen の提示 — 要件 5.2, 5.3', () => {
 	});
 });
 
-describe('VerifyEmailScreen の取り直し — 要件 5.5, 5.6, 5.7', () => {
+describe('VerifyEmail の取り直し — 要件 5.5, 5.6, 5.7', () => {
 	it('利用者の操作を求めずに、取り直しを繰り返す', async () => {
 		vi.useFakeTimers();
 		const { store } = await setup();
@@ -89,7 +89,7 @@ describe('VerifyEmailScreen の取り直し — 要件 5.5, 5.6, 5.7', () => {
 	});
 });
 
-describe('VerifyEmailScreen の再送 — 要件 5.4, 5.8', () => {
+describe('VerifyEmail の再送 — 要件 5.4, 5.8', () => {
 	it('確認メールを再送する手段を提供する', async () => {
 		const { screen, store } = await setup();
 		await screen.getByRole('button', { name: jaMessages.verifyEmailResend }).click();
@@ -119,7 +119,7 @@ describe('VerifyEmailScreen の再送 — 要件 5.4, 5.8', () => {
 	});
 });
 
-describe('VerifyEmailScreen の導線 — 要件 5.9, 5.10', () => {
+describe('VerifyEmail の導線 — 要件 5.9, 5.10', () => {
 	it('サインアウトする手段を提供し、その要求を通知する', async () => {
 		const { screen, store, onSignOut } = await setup();
 		await screen.getByRole('button', { name: jaMessages.verifyEmailSignOut }).click();

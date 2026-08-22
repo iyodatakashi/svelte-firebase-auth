@@ -2,7 +2,7 @@
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { PasswordResetScreenProps } from '$lib/models/auth/auth.types';
+	import type { PasswordResetProps } from '$lib/models/auth/auth.types';
 
 	let {
 		store,
@@ -10,7 +10,7 @@
 		header,
 		onRequested,
 		onRequestSignIn
-	}: PasswordResetScreenProps = $props();
+	}: PasswordResetProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -44,17 +44,17 @@
 	};
 </script>
 
-<section class="password-reset-screen">
+<section class="password-reset">
 	{#if header}
-		<div class="password-reset-screen__header">{@render header()}</div>
+		<div class="password-reset__header">{@render header()}</div>
 	{/if}
 
-	<h2 class="password-reset-screen__title">{messages.passwordResetTitle}</h2>
-	<p class="password-reset-screen__description">{messages.passwordResetDescription}</p>
+	<h2 class="password-reset__title">{messages.passwordResetTitle}</h2>
+	<p class="password-reset__description">{messages.passwordResetDescription}</p>
 
-	<form class="password-reset-screen__form" onsubmit={submit} novalidate>
-		<div class="password-reset-screen__field">
-			<label class="password-reset-screen__label" for="password-reset-email">
+	<form class="password-reset__form" onsubmit={submit} novalidate>
+		<div class="password-reset__field">
+			<label class="password-reset__label" for="password-reset-email">
 				{messages.emailLabel}
 			</label>
 			<Input
@@ -68,11 +68,11 @@
 		</div>
 
 		{#if hasRequested}
-			<p class="password-reset-screen__notice" role="status">{messages.passwordResetSent}</p>
-			<p class="password-reset-screen__spam">{messages.passwordResetCheckSpam}</p>
+			<p class="password-reset__notice" role="status">{messages.passwordResetSent}</p>
+			<p class="password-reset__spam">{messages.passwordResetCheckSpam}</p>
 		{/if}
 		{#if errorMessage}
-			<p class="password-reset-screen__error" role="alert">{errorMessage}</p>
+			<p class="password-reset__error" role="alert">{errorMessage}</p>
 		{/if}
 
 		<Button
@@ -86,7 +86,7 @@
 		</Button>
 	</form>
 
-	<div class="password-reset-screen__links">
+	<div class="password-reset__links">
 		<Button onclick={onRequestSignIn} disabled={isSubmitting}>
 			{messages.passwordResetToSignIn}
 		</Button>
@@ -94,60 +94,60 @@
 </section>
 
 <style>
-	.password-reset-screen {
+	.password-reset {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
 	}
 
-	.password-reset-screen__title {
+	.password-reset__title {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-xl);
 	}
 
-	.password-reset-screen__description {
+	.password-reset__description {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-text-subtle-color);
 	}
 
-	.password-reset-screen__form {
+	.password-reset__form {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
 
-	.password-reset-screen__field {
+	.password-reset__field {
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
 	}
 
-	.password-reset-screen__label {
+	.password-reset__label {
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-text-subtle-color);
 	}
 
-	.password-reset-screen__notice {
+	.password-reset__notice {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-success-color);
 	}
 
-	.password-reset-screen__spam {
+	.password-reset__spam {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-text-subtle-color);
 	}
 
-	.password-reset-screen__error {
+	.password-reset__error {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
 	}
 
-	.password-reset-screen__links {
+	.password-reset__links {
 		display: flex;
 		gap: 0.5rem;
 	}

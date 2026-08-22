@@ -5,13 +5,14 @@ export { normalizeEmail } from './models/auth/auth';
 export { jaMessages, resolveMessages } from './messages/ja';
 export { authErrorMessageOf } from './messages/authErrorMessage';
 
-export { default as SignInScreen } from './screens/SignInScreen.svelte';
-export { default as SignUpScreen } from './screens/SignUpScreen.svelte';
-export { default as VerifyEmailScreen } from './screens/VerifyEmailScreen.svelte';
-export { default as PasswordChangeScreen } from './screens/PasswordChangeScreen.svelte';
-export { default as PasswordResetScreen } from './screens/PasswordResetScreen.svelte';
+export { default as SignIn } from './components/SignIn.svelte';
+export { default as SignUp } from './components/SignUp.svelte';
+export { default as VerifyEmail } from './components/VerifyEmail.svelte';
+export { default as PasswordChange } from './components/PasswordChange.svelte';
+export { default as PasswordReset } from './components/PasswordReset.svelte';
 
 export type {
+	AuthBaseProps,
 	AuthConfig,
 	AuthError,
 	AuthErrorContext,
@@ -19,13 +20,12 @@ export type {
 	AuthMessages,
 	AuthMessagesOverride,
 	AuthResult,
-	AuthScreenProps,
 	AuthStore,
 	CreateAuthStore,
-	PasswordChangeScreenProps,
+	PasswordChangeProps,
 	PasswordRequirement,
-	PasswordResetScreenProps,
-	SignInScreenProps,
-	SignUpScreenProps,
-	VerifyEmailScreenProps
+	PasswordResetProps,
+	SignInProps,
+	SignUpProps,
+	VerifyEmailProps
 } from './models/auth/auth.types';

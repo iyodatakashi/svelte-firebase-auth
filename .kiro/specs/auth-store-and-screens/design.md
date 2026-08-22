@@ -46,7 +46,7 @@
 - `firebase/auth`（peer, P0）— 認証のみ。`firebase/firestore` に触れない
 - `svelte`（peer, P0）— runes
 - `@14ch/svelte-ui`（peer, P1）— 画面の部品とトークン
-- 依存の向きは **models → messages → screens** および **models → stores → screens** の一方向。逆向きを作らない
+- 依存の向きは **models → messages → components** および **models → stores → components** の一方向。逆向きを作らない
 
 ### Revalidation Triggers
 
@@ -77,7 +77,7 @@ graph TB
 
     subgraph Lib[svelte firebase auth]
         Index[index.ts 公開面]
-        Screens[screens 5画面]
+        Components[components 5画面]
         Stores[stores createAuthStore]
         Messages[messages 既定の日本語]
         Models[models 型と純関数]
@@ -87,16 +87,16 @@ graph TB
     UI[14ch svelte ui]
 
     Init -->|Auth と AuthConfig| Index
-    Index --> Screens
+    Index --> Components
     Index --> Stores
     Index --> Models
-    Screens --> Messages
-    Screens --> Models
-    Screens --> UI
+    Components --> Messages
+    Components --> Models
+    Components --> UI
     Messages --> Models
     Stores --> Models
     Stores --> FirebaseAuth
-    Screens -.->|完了と遷移の要求| Guard
+    Components -.->|完了と遷移の要求| Guard
     Stores -.->|確認済みのクレーム| Rules
 ```
 
@@ -107,7 +107,7 @@ graph TB
 - **New components rationale**: 5画面はいずれも利用者への提示が異なり、共通の部品へ吸わせない（`structure.md`「過度な共通化をしない」）
 - **Steering compliance**: `$app/*` を import しない／例外を投げない／シングルトンにしない／独自のパレットを持たない
 
-**依存の向き（違反は誤りとして扱う）**: `models` → `messages` → `screens`、`models` → `stores` → `screens`。`screens` は `stores` を**型としてのみ**参照し、実体は props で受け取る。`models` はいずれの層も参照しない。
+**依存の向き（違反は誤りとして扱う）**: `models` → `messages` → `screens`、`models` → `stores` → `screens`。`components` は `stores` を**型としてのみ**参照し、実体は props で受け取る。`models` はいずれの層も参照しない。
 
 ### Technology Stack
 
@@ -139,11 +139,11 @@ src/lib/
 ├── stores/
 │   └── auth.svelte.ts                  # createAuthStore。購読と寿命を持つ唯一の場所
 └── screens/
-    ├── SignInScreen.svelte
-    ├── SignUpScreen.svelte
-    ├── VerifyEmailScreen.svelte
-    ├── PasswordChangeScreen.svelte
-    └── PasswordResetScreen.svelte
+    ├── SignIn.svelte
+    ├── SignUp.svelte
+    ├── VerifyEmail.svelte
+    ├── PasswordChange.svelte
+    └── PasswordReset.svelte
 
 src/routes/                             # ショーケース。配布物に含めない
 ├── +layout.svelte                       # ストアの生成と start/stop、@14ch/svelte-ui のスタイル読み込み
@@ -175,10 +175,10 @@ src/tests/                              # 実装と対称の配置
 ```mermaid
 sequenceDiagram
     participant User as 利用者
-    participant SignUp as SignUpScreen
+    participant SignUp as SignUp
     participant Store as AuthStore
     participant FB as Firebase Auth
-    participant Verify as VerifyEmailScreen
+    participant Verify as VerifyEmail
     participant Host as 組み込み側
 
     User->>SignUp: メールアドレスとパスワード
@@ -236,24 +236,24 @@ flowchart TB
 
 ## Requirements Traceability
 
-| Requirement   | Summary                                    | Components                             | Interfaces                                                                            | Flows                |
-| ------------- | ------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------- | -------------------- |
-| 1.1–1.5, 1.10 | 公開面・初期化しない・遷移しない・複数生成 | PublicSurface, AuthStoreFactory        | `createAuthStore`, `AuthConfig`                                                       | Boundary Map         |
-| 1.6           | メールリンクを備えない                     | AuthStoreFactory                       | —                                                                                     | —                    |
-| 1.7           | メールアドレスの正規化                     | AuthModels                             | `normalizeEmail`                                                                      | —                    |
-| 1.8           | 送信経路の差し替えの余地                   | AuthStoreFactory                       | 送信は `signUp` / `sendEmailVerification` / `sendPasswordReset` の内部の1箇所に閉じる | —                    |
-| 1.9           | 継続 URL の反映                            | AuthStoreFactory                       | `AuthConfig.continueUrl`                                                              | 登録から確認済みまで |
-| 2.1–2.7       | 公開する状態と追随                         | AuthStoreFactory                       | `AuthStore`                                                                           | —                    |
-| 2.8–2.10      | 確認状態の取り直しと多重実行の抑止         | AuthStoreFactory                       | `refreshVerification`                                                                 | 取り直しの寿命       |
-| 2.11          | 購読の開始と停止                           | AuthStoreFactory                       | `start`, `stop`                                                                       | —                    |
-| 3.1–3.9       | サインインとサインアウト                   | SignInScreen, AuthStoreFactory         | `SignInScreenProps`, `signIn`, `signOut`                                              | —                    |
-| 4.1–4.8       | 登録と自由登録の可否                       | SignUpScreen, AuthStoreFactory         | `SignUpScreenProps`, `signUp`, `canSelfRegister`                                      | 登録から確認済みまで |
-| 5.1–5.10      | 確認と確認待ち画面                         | VerifyEmailScreen, AuthStoreFactory    | `VerifyEmailScreenProps`, `sendEmailVerification`                                     | 取り直しの寿命       |
-| 6.1–6.8       | パスワードの変更                           | PasswordChangeScreen, AuthStoreFactory | `PasswordChangeScreenProps`, `changePassword`                                         | パスワードの変更     |
-| 7.1–7.6       | パスワードの再設定                         | PasswordResetScreen, AuthStoreFactory  | `PasswordResetScreenProps`, `sendPasswordReset`                                       | —                    |
-| 8.1–8.6       | エラーの語彙と返し方                       | AuthModels, AuthMessages               | `AuthResult`, `AuthError`, `AuthErrorKind`, `authErrorMessageOf`                      | —                    |
-| 9.1–9.9       | 画面の契約と文言                           | AuthScreens, AuthMessages              | `AuthScreenProps`, `AuthMessages`                                                     | —                    |
-| 10.1–10.5     | 配布の形と手引き                           | PackagingAndShowcase                   | `package.json`, README                                                                | —                    |
+| Requirement   | Summary                                    | Components                       | Interfaces                                                                            | Flows                |
+| ------------- | ------------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------- | -------------------- |
+| 1.1–1.5, 1.10 | 公開面・初期化しない・遷移しない・複数生成 | PublicSurface, AuthStoreFactory  | `createAuthStore`, `AuthConfig`                                                       | Boundary Map         |
+| 1.6           | メールリンクを備えない                     | AuthStoreFactory                 | —                                                                                     | —                    |
+| 1.7           | メールアドレスの正規化                     | AuthModels                       | `normalizeEmail`                                                                      | —                    |
+| 1.8           | 送信経路の差し替えの余地                   | AuthStoreFactory                 | 送信は `signUp` / `sendEmailVerification` / `sendPasswordReset` の内部の1箇所に閉じる | —                    |
+| 1.9           | 継続 URL の反映                            | AuthStoreFactory                 | `AuthConfig.continueUrl`                                                              | 登録から確認済みまで |
+| 2.1–2.7       | 公開する状態と追随                         | AuthStoreFactory                 | `AuthStore`                                                                           | —                    |
+| 2.8–2.10      | 確認状態の取り直しと多重実行の抑止         | AuthStoreFactory                 | `refreshVerification`                                                                 | 取り直しの寿命       |
+| 2.11          | 購読の開始と停止                           | AuthStoreFactory                 | `start`, `stop`                                                                       | —                    |
+| 3.1–3.9       | サインインとサインアウト                   | SignIn, AuthStoreFactory         | `SignInProps`, `signIn`, `signOut`                                                    | —                    |
+| 4.1–4.8       | 登録と自由登録の可否                       | SignUp, AuthStoreFactory         | `SignUpProps`, `signUp`, `canSelfRegister`                                            | 登録から確認済みまで |
+| 5.1–5.10      | 確認と確認待ち画面                         | VerifyEmail, AuthStoreFactory    | `VerifyEmailProps`, `sendEmailVerification`                                           | 取り直しの寿命       |
+| 6.1–6.8       | パスワードの変更                           | PasswordChange, AuthStoreFactory | `PasswordChangeProps`, `changePassword`                                               | パスワードの変更     |
+| 7.1–7.6       | パスワードの再設定                         | PasswordReset, AuthStoreFactory  | `PasswordResetProps`, `sendPasswordReset`                                             | —                    |
+| 8.1–8.6       | エラーの語彙と返し方                       | AuthModels, AuthMessages         | `AuthResult`, `AuthError`, `AuthErrorKind`, `authErrorMessageOf`                      | —                    |
+| 9.1–9.9       | 画面の契約と文言                           | AuthScreens, AuthMessages        | `AuthBaseProps`, `AuthMessages`                                                       | —                    |
+| 10.1–10.5     | 配布の形と手引き                           | PackagingAndShowcase             | `package.json`, README                                                                | —                    |
 
 ## Components and Interfaces
 
@@ -262,11 +262,11 @@ flowchart TB
 | AuthModels           | models         | 型・語彙・純関数                                         | 1.7, 8                                       | —                                        | Service        |
 | AuthMessages         | messages       | 既定の日本語、項目単位の差し替え、語彙から文言を引く関数 | 8.5, 9.4, 9.5                                | AuthModels (P0)                          | Service        |
 | AuthStoreFactory     | stores         | 認証状態の保持と Firebase Auth への操作                  | 1.1–1.10, 2, 3.1, 3.6, 4.1, 4.2, 5.1, 6, 7.1 | firebase/auth (P0), AuthModels (P0)      | Service, State |
-| SignInScreen         | screens        | サインインの画面                                         | 3.2–3.5, 3.7–3.9                             | AuthStoreFactory (P0), AuthMessages (P0) | —              |
-| SignUpScreen         | screens        | 登録の画面                                               | 4.3–4.7                                      | 同上                                     | —              |
-| VerifyEmailScreen    | screens        | 確認待ちの画面と、確認の検知                             | 5.2–5.10                                     | 同上                                     | State          |
-| PasswordChangeScreen | screens        | パスワードの変更の画面                                   | 6.2, 6.3, 6.5, 6.8                           | 同上                                     | —              |
-| PasswordResetScreen  | screens        | パスワードの再設定の画面                                 | 7.2–7.6                                      | 同上                                     | —              |
+| SignIn               | screens        | サインインの画面                                         | 3.2–3.5, 3.7–3.9                             | AuthStoreFactory (P0), AuthMessages (P0) | —              |
+| SignUp               | screens        | 登録の画面                                               | 4.3–4.7                                      | 同上                                     | —              |
+| VerifyEmail          | screens        | 確認待ちの画面と、確認の検知                             | 5.2–5.10                                     | 同上                                     | State          |
+| PasswordChange       | screens        | パスワードの変更の画面                                   | 6.2, 6.3, 6.5, 6.8                           | 同上                                     | —              |
+| PasswordReset        | screens        | パスワードの再設定の画面                                 | 7.2–7.6                                      | 同上                                     | —              |
 | PublicSurface        | index          | 組み込み側が依存してよい面                               | 1.4, 1.5, 8.6                                | すべて (P0)                              | —              |
 | PackagingAndShowcase | build / routes | 配布の形・README・ショーケース                           | 10                                           | —                                        | —              |
 
@@ -522,7 +522,7 @@ export declare function createAuthStore(auth: Auth, config: AuthConfig): AuthSto
 - Validation: エミュレータで、登録 → 確認メールの送出 → 別セッションでの確認 → `refreshVerification` による反映を確かめる。`too-many-requests` はモックで確かめる
 - Risks: **`start()` の呼び忘れは `isResolved` が永久に `false` のままになる**（組み込み側は読み込み中の表示から進まない）。markn の `documentsStore` と同じ危うさであり、README とショーケースで書き方を示して補う
 
-### screens
+### components
 
 5画面はいずれも**マークアップと画面内の状態だけ**を持ち、新しい境界を作らない。共通の props は基底の型に集約し、画面ごとの差分だけを足す。
 
@@ -533,7 +533,7 @@ import type { Snippet } from 'svelte';
 import type { AuthStore } from '$lib/stores/auth.svelte';
 import type { AuthMessages } from '$lib/messages/ja';
 
-export interface AuthScreenProps {
+export interface AuthBaseProps {
 	readonly store: AuthStore;
 	/** 渡さなかった項目は同梱の日本語を使う */
 	readonly messages?: AuthMessagesOverride;
@@ -541,31 +541,31 @@ export interface AuthScreenProps {
 	readonly header?: Snippet;
 }
 
-export interface SignInScreenProps extends AuthScreenProps {
+export interface SignInProps extends AuthBaseProps {
 	readonly onSignedIn: () => void;
 	readonly onRequestPasswordReset: () => void;
 	/** 自由登録が許可されているときだけ呼ばれる */
 	readonly onRequestSignUp?: () => void;
 }
 
-export interface SignUpScreenProps extends AuthScreenProps {
+export interface SignUpProps extends AuthBaseProps {
 	readonly onSignedUp: () => void;
 	readonly onRequestSignIn: () => void;
 }
 
-export interface VerifyEmailScreenProps extends AuthScreenProps {
+export interface VerifyEmailProps extends AuthBaseProps {
 	readonly onVerified: () => void;
 	readonly onSignOut: () => void;
 	/** サインアウトを終えてから呼ばれる */
 	readonly onRequestSignUpWithAnotherEmail: () => void;
 }
 
-export interface PasswordChangeScreenProps extends AuthScreenProps {
+export interface PasswordChangeProps extends AuthBaseProps {
 	readonly onChanged: () => void;
 	readonly onCancel: () => void;
 }
 
-export interface PasswordResetScreenProps extends AuthScreenProps {
+export interface PasswordResetProps extends AuthBaseProps {
 	readonly onRequested: () => void;
 	readonly onRequestSignIn: () => void;
 }
@@ -581,7 +581,7 @@ export interface PasswordResetScreenProps extends AuthScreenProps {
 - 意匠の値は `--svelte-ui-*` を参照し、独自のパレットを持たない。**ブラウザ標準のダイアログを使わない**
 - 画面全体を占める前提の外形を持たない（`position: fixed` を使わない）
 
-#### VerifyEmailScreen
+#### VerifyEmail
 
 唯一、画面が状態の寿命を持つため詳細を示す。
 
@@ -627,11 +627,11 @@ export { normalizeEmail } from './models/auth/auth';
 export { jaMessages, resolveMessages } from './messages/ja';
 export { authErrorMessageOf } from './messages/authErrorMessage';
 
-export { default as SignInScreen } from './screens/SignInScreen.svelte';
-export { default as SignUpScreen } from './screens/SignUpScreen.svelte';
-export { default as VerifyEmailScreen } from './screens/VerifyEmailScreen.svelte';
-export { default as PasswordChangeScreen } from './screens/PasswordChangeScreen.svelte';
-export { default as PasswordResetScreen } from './screens/PasswordResetScreen.svelte';
+export { default as SignIn } from './components/SignIn.svelte';
+export { default as SignUp } from './components/SignUp.svelte';
+export { default as VerifyEmail } from './components/VerifyEmail.svelte';
+export { default as PasswordChange } from './components/PasswordChange.svelte';
+export { default as PasswordReset } from './components/PasswordReset.svelte';
 
 export type {
 	AuthStore,
@@ -643,12 +643,12 @@ export type {
 	AuthMessages,
 	AuthMessagesOverride,
 	AuthErrorContext,
-	AuthScreenProps,
-	SignInScreenProps,
-	SignUpScreenProps,
-	VerifyEmailScreenProps,
-	PasswordChangeScreenProps,
-	PasswordResetScreenProps
+	AuthBaseProps,
+	SignInProps,
+	SignUpProps,
+	VerifyEmailProps,
+	PasswordChangeProps,
+	PasswordResetProps
 } from './models/auth/auth.types';
 ```
 
@@ -756,7 +756,7 @@ Firebase のエラーコードを、**利用者への案内が分かれる粒度
 
 ### 公開面の変更（組み込み側へ返す事項）
 
-- **`SignUpScreenProps` に `onRequestPasswordReset` を足した。** 要件 4.3 の「既に使われていることを示し、**パスワードの再設定へ導く**」は、導線の要求先を組み込み側へ返さないと成立しない。この導線は `email-already-in-use` を受けたときだけ現れる
+- **`SignUpProps` に `onRequestPasswordReset` を足した。** 要件 4.3 の「既に使われていることを示し、**パスワードの再設定へ導く**」は、導線の要求先を組み込み側へ返さないと成立しない。この導線は `email-already-in-use` を受けたときだけ現れる
 - **`CreateAuthStore` 型を公開面から出した。** 組み込み側が生成関数を変数として受け渡すときに型を書けるようにするため
 
 ### ブラウザ標準の検証を使わない
@@ -787,3 +787,13 @@ Firebase のエラーコードを、**利用者への案内が分かれる粒度
 - 取り直しの多重実行の共有を外す／未登録のアドレスの握りつぶしを外す／確認メールの失敗を登録の失敗にする
 - 確認待ち画面の取り直しの停止を外す／サインアウトより先に通知する
 - 自由登録の判定を外す／パスワードの変更の文脈を取り違える／頻度超過の抑止を外す
+
+### コンポーネント名から `Screen` を落とした
+
+**`SignInScreen` → `SignIn`。`src/lib/screens/` → `src/lib/components/`。** props の型も `SignInScreenProps` → `SignInProps`、共通の基底は `AuthScreenProps` → `AuthBaseProps` とした。
+
+- `structure.md` は当初「画面のコンポーネント名は `*Screen` で揃える。組み込み側では自前の画面と並ぶため、由来が名前から分かる状態にする」と定めていた。**この理由は成り立っていない。** 組み込み側（markn）は自分の画面を `VerifyEmailPage` のように `*Page` で名付けており、衝突しない。出自は import 文が示す
+- **このパッケージが component として出すものは全部が画面**であり、名前で言い直しても情報が増えない
+- 規則のほうが広すぎたため、`structure.md` の当該項目を置き換えた（→ `structure.md`「Naming Conventions」）
+
+**これは公開面の破壊的変更である**（→ Revalidation Triggers）。

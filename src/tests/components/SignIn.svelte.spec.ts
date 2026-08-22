@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createRawSnippet } from 'svelte';
 import { render } from 'vitest-browser-svelte';
-import SignInScreen from '$lib/screens/SignInScreen.svelte';
+import SignIn from '$lib/components/SignIn.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { failureOf, fakeStore } from '../support/fakeStore.svelte';
 
@@ -10,13 +10,13 @@ const setup = async (options: Parameters<typeof fakeStore>[0] = {}) => {
 	const onSignedIn = vi.fn();
 	const onRequestPasswordReset = vi.fn();
 	const onRequestSignUp = vi.fn();
-	const screen = await render(SignInScreen, {
+	const screen = await render(SignIn, {
 		props: { store, onSignedIn, onRequestPasswordReset, onRequestSignUp }
 	});
 	return { screen, store, onSignedIn, onRequestPasswordReset, onRequestSignUp };
 };
 
-describe('SignInScreen — 要件 3.5, 9.2', () => {
+describe('SignIn — 要件 3.5, 9.2', () => {
 	it('入力した資格情報でサインインし、完了を組み込み側へ通知する', async () => {
 		const { screen, store, onSignedIn } = await setup();
 
@@ -29,7 +29,7 @@ describe('SignInScreen — 要件 3.5, 9.2', () => {
 	});
 });
 
-describe('SignInScreen の失敗 — 要件 3.2, 3.3', () => {
+describe('SignIn の失敗 — 要件 3.2, 3.3', () => {
 	it('資格情報の誤りは、どちらが誤っているかを示さない', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.signIn).mockResolvedValueOnce(failureOf('invalid-credential'));
@@ -72,7 +72,7 @@ describe('SignInScreen の失敗 — 要件 3.2, 3.3', () => {
 	});
 });
 
-describe('SignInScreen の処理中 — 要件 3.4', () => {
+describe('SignIn の処理中 — 要件 3.4', () => {
 	it('処理中は同じ操作の重複した実行を受け付けない', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.signIn).mockImplementation(() => new Promise(() => {}) as Promise<never>);
@@ -87,7 +87,7 @@ describe('SignInScreen の処理中 — 要件 3.4', () => {
 	});
 });
 
-describe('SignInScreen の導線 — 要件 3.7, 3.8, 3.9', () => {
+describe('SignIn の導線 — 要件 3.7, 3.8, 3.9', () => {
 	it('パスワードの再設定を要求する導線を常に置く', async () => {
 		const { screen, onRequestPasswordReset } = await setup({ canSelfRegister: false });
 		await screen.getByRole('button', { name: jaMessages.signInToPasswordReset }).click();
@@ -108,10 +108,10 @@ describe('SignInScreen の導線 — 要件 3.7, 3.8, 3.9', () => {
 	});
 });
 
-describe('SignInScreen の外形 — 要件 9.6, 9.8, 9.9', () => {
+describe('SignIn の外形 — 要件 9.6, 9.8, 9.9', () => {
 	it('組み込み側の名乗りを画面の上部へ差し込める', async () => {
 		const { store } = fakeStore();
-		const screen = await render(SignInScreen, {
+		const screen = await render(SignIn, {
 			props: {
 				store,
 				onSignedIn: vi.fn(),
@@ -125,7 +125,7 @@ describe('SignInScreen の外形 — 要件 9.6, 9.8, 9.9', () => {
 
 	it('画面全体を占める前提の外形を持たない', async () => {
 		const { screen } = await setup();
-		const root = screen.container.querySelector('.sign-in-screen');
+		const root = screen.container.querySelector('.sign-in');
 		expect(root).not.toBeNull();
 		expect(getComputedStyle(root as Element).position).not.toBe('fixed');
 	});

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import SignUpScreen from '$lib/screens/SignUpScreen.svelte';
+import SignUp from '$lib/components/SignUp.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { failureOf, fakeStore } from '../support/fakeStore.svelte';
 
@@ -9,7 +9,7 @@ const setup = async () => {
 	const onSignedUp = vi.fn();
 	const onRequestSignIn = vi.fn();
 	const onRequestPasswordReset = vi.fn();
-	const screen = await render(SignUpScreen, {
+	const screen = await render(SignUp, {
 		props: { store, onSignedUp, onRequestSignIn, onRequestPasswordReset }
 	});
 	return { screen, store, onSignedUp, onRequestSignIn, onRequestPasswordReset };
@@ -25,7 +25,7 @@ const fillAndSubmit = async (
 	await screen.getByRole('button', { name: jaMessages.signUpSubmit }).click();
 };
 
-describe('SignUpScreen — 要件 4.6', () => {
+describe('SignUp — 要件 4.6', () => {
 	it('登録が完了したら、組み込み側へ通知する', async () => {
 		const { screen, store, onSignedUp } = await setup();
 		await fillAndSubmit(screen);
@@ -35,7 +35,7 @@ describe('SignUpScreen — 要件 4.6', () => {
 	});
 });
 
-describe('SignUpScreen の失敗 — 要件 4.3, 4.4, 4.5', () => {
+describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5', () => {
 	it('既に使われているメールアドレスは、その旨を示す', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.signUp).mockResolvedValueOnce(failureOf('email-already-in-use'));
@@ -100,7 +100,7 @@ describe('SignUpScreen の失敗 — 要件 4.3, 4.4, 4.5', () => {
 	});
 });
 
-describe('SignUpScreen の処理中と導線 — 要件 4.7', () => {
+describe('SignUp の処理中と導線 — 要件 4.7', () => {
 	it('処理中は同じ操作の重複した実行を受け付けない', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.signUp).mockImplementation(() => new Promise(() => {}) as Promise<never>);

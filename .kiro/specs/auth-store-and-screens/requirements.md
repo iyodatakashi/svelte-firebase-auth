@@ -62,6 +62,7 @@ steering（product.md「まだ決めていないもの」）で最初の spec �
 - `AuthModuleContract` の「4画面」という記述（`VerifyEmailScreenProps` を含めて5画面になる）
 - markn 側の `VerifyEmailPage` — 他の画面と同じく、モジュールの画面に対する薄いアダプタになる
 - 主語が **the markn** となっている確認待ち画面の要件（3-5、3-6、6-4〜6-7）— 画面の実体は **the 認証モジュール** に移る
+- **公開する画面の名前から `Screen` を落とした**（`SignInScreen` → `SignIn`、`SignInScreenProps` → `SignInProps`、共通の基底は `AuthBaseProps`）。markn の `AuthModuleContract` に書かれた名前は、こちらの名前に合わせる
 
 ## Introduction
 
