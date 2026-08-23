@@ -461,3 +461,67 @@ describe('メールアドレスの確認を求めるかどうか — 要件 1.11
 		]);
 	});
 });
+
+describe('認証の段階 — 要件 2.12', () => {
+	it('開始する前は、まだ分からない', () => {
+		expect(createAuthStore(fakeAuth(), config).stage).toBe('unresolved');
+	});
+
+	it('サインインしていなければ、サインアウト済みとして返す', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(null);
+		expect(store.stage).toBe('signed-out');
+	});
+
+	it('確認を求める設定で未確認なら、確認待ちとして返す', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: false }));
+		expect(store.stage).toBe('email-unverified');
+	});
+
+	it('確認を求める設定で確認済みなら、通過として返す', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: true }));
+		expect(store.stage).toBe('ready');
+	});
+
+	it('確認を求めない設定なら、未確認でも通過として返す', () => {
+		const store = createAuthStore(fakeAuth(), withoutVerification);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: false }));
+		expect(store.stage).toBe('ready');
+	});
+
+	it('停止すると、まだ分からないへ戻る', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: true }));
+		store.stop();
+		expect(store.stage).toBe('unresolved');
+	});
+
+	it('確認が済んだ時点で、確認待ちから通過へ移る', async () => {
+		const current = fakeUser({ emailVerified: false });
+		const store = createAuthStore(fakeAuth(current), config);
+		store.start();
+		emitAuthState(current);
+		expect(store.stage).toBe('email-unverified');
+
+		firebaseAuthMock.reload.mockImplementationOnce(async () => {
+			Object.assign(current, { emailVerified: true });
+		});
+		await store.refreshVerification();
+		expect(store.stage).toBe('ready');
+	});
+
+	it('サインアウト済みと、まだ分からないを取り違えない', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		expect(store.stage).toBe('unresolved');
+		store.start();
+		emitAuthState(null);
+		expect(store.stage).toBe('signed-out');
+	});
+});

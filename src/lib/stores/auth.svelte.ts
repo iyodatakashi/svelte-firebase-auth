@@ -211,6 +211,18 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		get requiresEmailVerification() {
 			return config.emailVerification;
 		},
+		get stage() {
+			if (!isResolved) {
+				return 'unresolved';
+			}
+			if (user === null) {
+				return 'signed-out';
+			}
+			if (config.emailVerification && !isEmailVerified) {
+				return 'email-unverified';
+			}
+			return 'ready';
+		},
 		signIn,
 		signUp,
 		signOut,

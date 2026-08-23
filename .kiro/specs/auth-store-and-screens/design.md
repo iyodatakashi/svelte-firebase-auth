@@ -53,7 +53,7 @@
 以下の変更は、組み込み側（markn ほか）に再検証を要求する。
 
 - `AuthErrorKind` の増減 — 文言の網羅に波及する。**本設計は markn design の8種から10種へ広げている**（`registration-disabled` / `network-error`）
-- `AuthStore` / `AuthConfig` / 画面の props の形の変更
+- `AuthStore` / `AuthConfig` / 画面の props の形の変更（**`AuthStage` の段階の増減を含む**。組み込み側の分岐の網羅に波及する）
 - 確認済みの反映の方法の変更（組み込み側のアクセス制御の成立に直結する）
 - peer 依存の版の要求の変更
 
@@ -478,6 +478,8 @@ export interface AuthStore {
 	readonly isEmailVerified: boolean;
 	readonly canSelfRegister: boolean;
 	readonly requiresEmailVerification: boolean;
+	/** 認証の段階。到達の判断はこれを見る */
+	readonly stage: AuthStage;
 
 	signIn(email: string, password: string): Promise<AuthResult>;
 	/** 成功時はサインイン済みにし、確認メールを送る */
@@ -813,3 +815,19 @@ Firebase のエラーコードを、**利用者への案内が分かれる粒度
 - **Rationale**: **この設定が制御するのは「自動で送るか」だけ**であり、到達ガードは設定の有無によらず組み込み側に残る。境界を動かさずに、確認を求めない組み込み先を受け入れられる
 - **Trade-offs**: `AuthConfig` に必須の項目が増える（公開面の破壊的変更）。既存の組み込み先が無いうちに入れる
 - **Follow-up**: エミュレータで、`emailVerification: false` のとき確認メールが**実際に発行されない**ことを確かめた（モックでは「呼ばなかったこと」しか分からない）
+
+### 到達の「判定」はライブラリが持ち、「遷移」は組み込み側に残す
+
+- **Context**: 2026-08-23 の指摘。「認証状態をチェックして、ログイン画面に戻すかどうかを判定する仕組みを組み込み側に任せると、共通の仕組みを毎回組み込み側で作ることになる」
+- **Findings**: 判定と遷移は分けられる。
+  - **判定**（いまどの段階か）は `isResolved` / `isLoggedIn` / `emailVerification` / `isEmailVerified` の組み合わせだけで決まり、アプリの知識を必要としない。**どの組み込み先でも同じ**
+  - **遷移**（その段階で何をするか）は、SvelteKit の `goto` か画面の差し替えかモーダルかで分かれる。**アプリごとに違う**
+  - 判定を各組み込み先へ委ねると誤りが再生産される。**実際、ショーケースの判定は要件 1.11 を足した際に `requiresEmailVerification` を見落としており、確認を求めない設定でも確認待ちへ送っていた**（同じ判定を2箇所で書いた結果）
+- **Alternatives Considered**:
+  1. 現状のまま、状態を個別に公開して組み込み側が組み立てる — 同じ判定が組み込み先の数だけ書かれ、上記の取りこぼしが繰り返される
+  2. 遷移までライブラリが行う（`goto` を呼ぶ／到達ガードのコンポーネントを持つ）— `$app/*` に依存し、SvelteKit 以外で使えなくなる（→ `tech.md`）。product.md の「担当しないこと」に反する
+  3. 5画面の出し分けごと引き受けるコンポーネントを公開する — 判定に加えてアプリの画面構成まで規定することになる。**要求が確認できてから足す**（省略可能な追加は破壊的変更ではない）
+- **Selected Approach**: `AuthStage`（`unresolved` / `signed-out` / `email-unverified` / `ready`）を `AuthStore.stage` として公開する。**判定だけを持ち、遷移は行わない**
+- **Rationale**: 境界（ルーティングに依存しない・遷移を自身で行わない）を動かさずに、実際に重複していた部分だけを取り除ける。`unresolved` を独立させることで、「まだ分からない」を「サインインしていない」と取り違える誤り（要件 2-3 の注）も型で防げる
+- **Trade-offs**: `AuthStore` に項目が増える（公開面の破壊的変更）。段階の増減は組み込み側の分岐に波及する（→ Revalidation Triggers）
+- **Follow-up**: **到達の判断は状態から導く**こと。サインインのコールバックで一度だけ切り替える形にすると、既にサインイン済みで開き直した利用者が素通りする。ショーケースをこの形にし、再読み込みで素通りしないことを E2E で確かめた

@@ -33,6 +33,14 @@ export const fakeStore = (options: FakeStoreOptions = {}) => {
 		},
 		canSelfRegister: options.canSelfRegister ?? true,
 		requiresEmailVerification: options.requiresEmailVerification ?? true,
+		get stage() {
+			if (!(options.isLoggedIn ?? true)) {
+				return 'signed-out';
+			}
+			return (options.requiresEmailVerification ?? true) && !isEmailVerified
+				? 'email-unverified'
+				: 'ready';
+		},
 		signIn: vi.fn(async () => ok),
 		signUp: vi.fn(async () => ok),
 		signOut: vi.fn(async () => undefined),

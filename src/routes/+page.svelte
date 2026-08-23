@@ -21,20 +21,22 @@
 	let privateView = $state<PrivateView>('signed-in');
 
 	/**
-	 * 到達の判断は組み込み側の担当。ライブラリは完了を知らせるだけで、遷移は行わない。
+	 * 段階の判定は `store.stage` が持つ。組み込み側に残るのは、その段階で何をするかだけ。
 	 *
 	 * **状態から導く。** コールバックで一度だけ切り替える形にすると、既にサインイン済みで
 	 * 開き直した利用者が素通りし、ガードとして働かない
 	 */
 	const view = $derived.by(() => {
-		if (!store.isLoggedIn) {
-			return publicView;
+		switch (store.stage) {
+			case 'unresolved':
+				return 'loading';
+			case 'signed-out':
+				return publicView;
+			case 'email-unverified':
+				return 'verify-email';
+			case 'ready':
+				return privateView;
 		}
-		// 確認を求める組み込み先では、確認が済むまで先へ通さない
-		if (store.requiresEmailVerification && !store.isEmailVerified) {
-			return 'verify-email';
-		}
-		return privateView;
 	});
 
 	const signOut = async () => {
@@ -47,7 +49,7 @@
 	<p class="showcase-page__brand">ショーケース</p>
 {/snippet}
 
-{#if !store.isResolved}
+{#if view === 'loading'}
 	<p class="showcase-page__loading">読み込み中…</p>
 {:else if view === 'sign-in'}
 	<SignIn

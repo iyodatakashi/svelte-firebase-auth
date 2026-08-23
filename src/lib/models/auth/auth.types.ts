@@ -50,6 +50,21 @@ export interface AuthConfig {
 	readonly continueUrl: string;
 }
 
+/**
+ * 認証の段階。到達の判断はこれを見て行う。
+ *
+ * どの組み込み先でも同じ判定になるため、ライブラリが持つ。
+ * **その段階で何をするか（どこへ遷移するか）は組み込み側の担当**であり、ライブラリは行わない
+ */
+export type AuthStage =
+	/** 初回の認証状態の判定が済んでいない。「サインインしていない」と取り違えない */
+	| 'unresolved'
+	| 'signed-out'
+	/** サインイン済みだが確認が済んでいない。確認を求める組み込み先でのみ現れる */
+	| 'email-unverified'
+	/** 通過。組み込み先が求める条件を満たしている */
+	| 'ready';
+
 export interface AuthStore {
 	readonly user: User | null;
 	/** 初回の認証状態の判定が完了したか。1回の購読の中では false へ戻らない */
@@ -61,6 +76,8 @@ export interface AuthStore {
 	readonly canSelfRegister: boolean;
 	/** 組み込み先がメールアドレスの確認を求めるか。到達の判断に用いる */
 	readonly requiresEmailVerification: boolean;
+	/** 認証の段階。到達の判断はこれを見る */
+	readonly stage: AuthStage;
 
 	signIn(email: string, password: string): Promise<AuthResult>;
 	/** 成功時はサインイン済みにし、確認メールを送る */
