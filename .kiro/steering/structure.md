@@ -17,8 +17,15 @@
 ```typescript
 export { createAuthStore } from './stores/auth.svelte';
 export { normalizeEmail } from './models/auth/auth';
+export { default as AuthGate } from './navigation/AuthGate.svelte';
 export { default as SignIn } from './components/SignIn.svelte';
-export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/auth/auth.types';
+export type {
+	AuthStore,
+	AuthConfig,
+	AuthRoutes,
+	AuthError,
+	AuthErrorKind
+} from './models/auth/auth.types';
 ```
 
 - **深い import を組み込み側に強いない。** `@14ch/svelte-firebase-auth/dist/components/...` を書かせる形にしない
@@ -29,7 +36,8 @@ export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/a
 **Purpose**: 画面の実体。マークアップと画面固有のロジック
 **Example**: `src/lib/components/SignIn.svelte`
 
-- **遷移を持たない。** 完了・失敗は props のコールバックで組み込み側へ返す
+- **段階を変えない導線の遷移を自ら行う。** 行き先は `store.routes` から読む。**コールバックの props を持たない**
+- **完了時には遷移しない。** サインイン・登録・確認・サインアウトの完了は段階を変えるため、`AuthGate` が動かす。画面にも同じ判断を書くと、判定が2箇所に増える
 - **状態は store から受け取る。** 画面が `Auth` を直接呼ばない
 
 ### stores（`src/lib/stores/`）
@@ -38,6 +46,14 @@ export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/a
 **Example**: `src/lib/stores/auth.svelte.ts`（`createAuthStore` ファクトリ）
 
 - **シングルトンにしない。** 組み込み側が `Auth` と設定を渡して生成する。ライブラリがグローバルな状態を持つと、テストと複数インスタンスで破綻する
+
+### navigation（`src/lib/navigation/`）
+
+**Purpose**: 到達の制御と、戻り先の保持。**`$app/*` に触ってよいのはここと `components/` だけ**
+**Example**: `src/lib/navigation/AuthGate.svelte`、`src/lib/navigation/returnTo.ts`
+
+- **判定を持たない。** 到達の判定は `models/` の純関数が持ち、ここはその結果に従うだけ。ルーターの無い環境では `goto` が例外を投げるため、分けないと単体で試験できない
+- **遷移と描画の抑止を対で持つ。** 遷移だけを止めても、判定が済むまで保護された経路の中身が画面に出る
 
 ### models（`src/lib/models/<domain>/`）
 
@@ -60,7 +76,8 @@ export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/a
 
 **Purpose**: 開発中に画面を見るためのショーケースと、E2E の対象。**配布物ではない**
 
-- ここに書いた設定値・Firebase の初期化・遷移は、**組み込み側の書き方の実例**として機能する。README と食い違わせない
+- ここに書いた設定値・Firebase の初期化・経路の置き方は、**組み込み側の書き方の実例**として機能する。README と食い違わせない
+- **認証の画面は、それぞれ独立した経路として置く。** 自前の画面切り替えを持たない。持つと、ライブラリの遷移と到達の制御を通らない経路でしか確かめられない
 
 ## Naming Conventions
 
@@ -68,7 +85,7 @@ export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/a
 - **TypeScript ファイル**: kebab-case。ただし store と models 配下は camelCase + 用途サフィックス（`auth.svelte.ts` / `auth.types.ts`）
 - **型**: PascalCase（`AuthStore`, `AuthErrorKind`）
 - **コンポーネント名に `Screen` のような種別のサフィックスを付けない。** このパッケージが component として出すものは全部が画面であり、名前で言い直しても情報が増えない。出自は import 文が示す（組み込み側は自分の画面を `*Page` などで名付けている）
-- **props の型は `<コンポーネント名>Props`**（`SignInProps`）。共通の基底は `AuthBaseProps`
+- **画面の props の型は `AuthBaseProps` に一本化する。** 画面ごとの差分が無いため、`<コンポーネント名>Props` を作らない。画面以外のコンポーネントの props は `<コンポーネント名>Props`（`AuthGateProps`）
 
 ## 型定義の規約（重要）
 
@@ -97,7 +114,7 @@ import AuthField from './AuthField.svelte';
 **Path Aliases**: `$lib/` → `src/lib/`（SvelteKit 標準）
 
 - **`src/lib` から `src/routes` を import しない。** 逆向きの依存であり、配布物がショーケースに依存する
-- **`$app/*` を import しない**（→ `tech.md`「SvelteKit に依存しない」）
+- **`$app/*` を import してよいのは `navigation/` と `components/` だけ。** `models/` は参照しない（→ `tech.md`「SvelteKit を前提とする」）
 
 ## CSS / スタイル記法
 
