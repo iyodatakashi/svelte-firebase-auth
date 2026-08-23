@@ -1,18 +1,12 @@
 <script lang="ts">
 	import { Button } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
 	import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
-	import type { VerifyEmailProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onVerified,
-		onSignOut,
-		onRequestSignUpWithAnotherEmail
-	}: VerifyEmailProps = $props();
+	let { store, messages: overrides, header }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -22,18 +16,15 @@
 	let isResendBlocked = $state(false);
 	let isResending = $state(false);
 	let isLeaving = $state(false);
-	let hasNotifiedVerified = $state(false);
 
 	// 表示されている間だけ取り直す。停止し損ねると、画面を離れた後も通信が続く
 	$effect(() => {
+		// 確認が済めば段階が変わる。この画面は遷移せず、到達の制御に任せる
 		const refresh = async () => {
-			if (hasNotifiedVerified) {
+			if (store.isEmailVerified) {
 				return;
 			}
-			if (await store.refreshVerification()) {
-				hasNotifiedVerified = true;
-				onVerified();
-			}
+			await store.refreshVerification();
 		};
 
 		const timer = setInterval(refresh, VERIFICATION_POLL_INTERVAL_MS);
@@ -75,8 +66,8 @@
 			return;
 		}
 		isLeaving = true;
+		// 遷移しない。段階が変わるため、到達の制御が動かす
 		await store.signOut();
-		onSignOut();
 	};
 
 	const signUpWithAnotherEmail = async () => {
@@ -84,9 +75,9 @@
 			return;
 		}
 		isLeaving = true;
-		// サインアウトを終えてから通知する
+		// サインアウトを終えてから遷移する
 		await store.signOut();
-		onRequestSignUpWithAnotherEmail();
+		await goto(store.routes.signUp);
 	};
 </script>
 

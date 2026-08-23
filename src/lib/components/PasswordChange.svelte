@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { PasswordChangeProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, header, onChanged, onCancel }: PasswordChangeProps = $props();
+	let { store, messages: overrides, header }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -27,8 +28,8 @@
 		isSubmitting = false;
 
 		if (result.ok) {
+			// 段階は変わらない。完了したことを示すだけで、この画面から離れない
 			hasChanged = true;
-			onChanged();
 			return;
 		}
 		// 現在のパスワードの誤りかどうかの判別も、文脈を渡してこの関数に任せる
@@ -85,7 +86,7 @@
 			<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
 				{messages.passwordChangeSubmit}
 			</Button>
-			<Button onclick={onCancel} disabled={isSubmitting}>
+			<Button onclick={() => goto(store.routes.afterSignIn)} disabled={isSubmitting}>
 				{messages.passwordChangeCancel}
 			</Button>
 		</div>

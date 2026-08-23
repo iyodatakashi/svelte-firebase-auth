@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth';
 import type {
 	AuthErrorKind,
 	AuthResult,
+	AuthRoutes,
 	AuthStore,
 	PasswordRequirement
 } from '$lib/models/auth/auth.types';
@@ -13,7 +14,17 @@ export interface FakeStoreOptions {
 	readonly canSelfRegister?: boolean;
 	readonly requiresEmailVerification?: boolean;
 	readonly isLoggedIn?: boolean;
+	readonly routes?: AuthRoutes;
 }
+
+/** 画面のテストが読む既定の経路。設定どおりの経路へ遷移することを確かめる */
+export const fakeRoutes: AuthRoutes = {
+	signIn: '/signin',
+	signUp: '/signup',
+	verifyEmail: '/verify-email',
+	passwordReset: '/password-reset',
+	afterSignIn: '/'
+};
 
 /**
  * 画面のテスト用のストア。画面は `store` を受け取るだけで Firebase を必要としない。
@@ -32,6 +43,7 @@ export const fakeStore = (options: FakeStoreOptions = {}) => {
 			return isEmailVerified;
 		},
 		canSelfRegister: options.canSelfRegister ?? true,
+		routes: options.routes ?? fakeRoutes,
 		requiresEmailVerification: options.requiresEmailVerification ?? true,
 		get stage() {
 			if (!(options.isLoggedIn ?? true)) {

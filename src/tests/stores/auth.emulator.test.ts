@@ -8,7 +8,14 @@ import { clearEmulatorUsers, createEmulatorAuth, fetchOobCodes } from '../suppor
 const config = {
 	selfRegistration: true,
 	emailVerification: true,
-	continueUrl: 'http://localhost:4173/'
+	continueUrl: 'http://localhost:4173/',
+	routes: {
+		signIn: '/signin',
+		signUp: '/signup',
+		verifyEmail: '/verify-email',
+		passwordReset: '/password-reset',
+		afterSignIn: '/'
+	}
 };
 
 let auth: Auth;

@@ -1,17 +1,11 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { SignInProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onSignedIn,
-		onRequestPasswordReset,
-		onRequestSignUp
-	}: SignInProps = $props();
+	let { store, messages: overrides, header }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -32,7 +26,7 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			onSignedIn();
+			// 完了時に遷移しない。段階が変わるため、到達の制御が動かす
 			return;
 		}
 		// 語彙ごとの分岐も文言もこの画面は持たない
@@ -83,11 +77,11 @@
 	</form>
 
 	<div class="sign-in__links">
-		<Button onclick={onRequestPasswordReset} disabled={isSubmitting}>
+		<Button onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
 			{messages.signInToPasswordReset}
 		</Button>
-		{#if store.canSelfRegister && onRequestSignUp}
-			<Button onclick={onRequestSignUp} disabled={isSubmitting}>
+		{#if store.canSelfRegister}
+			<Button onclick={() => goto(store.routes.signUp)} disabled={isSubmitting}>
 				{messages.signInToSignUp}
 			</Button>
 		{/if}

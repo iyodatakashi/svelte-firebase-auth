@@ -1,17 +1,11 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { AuthError, SignUpProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps, AuthError } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onSignedUp,
-		onRequestSignIn,
-		onRequestPasswordReset
-	}: SignUpProps = $props();
+	let { store, messages: overrides, header }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -36,7 +30,7 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			onSignedUp();
+			// 完了時に遷移しない。段階が変わるため、到達の制御が動かす
 			return;
 		}
 		failure = result.error;
@@ -87,11 +81,11 @@
 
 	<div class="sign-up__links">
 		{#if canOfferPasswordReset}
-			<Button onclick={onRequestPasswordReset} disabled={isSubmitting}>
+			<Button onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
 				{messages.signUpToPasswordReset}
 			</Button>
 		{/if}
-		<Button onclick={onRequestSignIn} disabled={isSubmitting}>
+		<Button onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
 			{messages.signUpToSignIn}
 		</Button>
 	</div>

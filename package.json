@@ -35,6 +35,7 @@
 	},
 	"peerDependencies": {
 		"@14ch/svelte-ui": "^0.0.61",
+		"@sveltejs/kit": "^2.63.0",
 		"firebase": "^12.18.0",
 		"svelte": "^5.0.0"
 	},

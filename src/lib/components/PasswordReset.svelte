@@ -1,16 +1,11 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { PasswordResetProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onRequested,
-		onRequestSignIn
-	}: PasswordResetProps = $props();
+	let { store, messages: overrides, header }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -35,8 +30,8 @@
 		isSubmitting = false;
 
 		if (result.ok) {
+			// 段階は変わらない。送ったことを示すだけで、この画面から離れない
 			hasRequested = true;
-			onRequested();
 			return;
 		}
 		errorMessage = authErrorMessageOf(result.error, messages, 'password-reset');
@@ -87,7 +82,7 @@
 	</form>
 
 	<div class="password-reset__links">
-		<Button onclick={onRequestSignIn} disabled={isSubmitting}>
+		<Button onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
 			{messages.passwordResetToSignIn}
 		</Button>
 	</div>

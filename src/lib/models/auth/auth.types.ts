@@ -37,6 +37,16 @@ export type AuthResult = { readonly ok: true } | { readonly ok: false; readonly 
 // 設定とストア
 // =============================================================================
 
+/** 認証の経路。組み込み側の URL 構成を受け取る。欠落を実行時の分岐として抱え込まないため、すべて必須 */
+export interface AuthRoutes {
+	readonly signIn: string;
+	readonly signUp: string;
+	readonly verifyEmail: string;
+	readonly passwordReset: string;
+	/** 認証を終えた利用者の既定の行き先 */
+	readonly afterSignIn: string;
+}
+
 export interface AuthConfig {
 	/** 登録の入口を画面に出すか。登録 API そのものは組み込み側が Firebase 側の設定で塞ぐ */
 	readonly selfRegistration: boolean;
@@ -48,6 +58,8 @@ export interface AuthConfig {
 	readonly emailVerification: boolean;
 	/** 確認と再設定の完了後に戻る URL。組み込み側の承認済みドメインである必要がある */
 	readonly continueUrl: string;
+	/** 認証の経路。画面の遷移と到達ガードが同じ値を読む */
+	readonly routes: AuthRoutes;
 }
 
 /**
@@ -65,6 +77,28 @@ export type AuthStage =
 	/** 通過。組み込み先が求める条件を満たしている */
 	| 'ready';
 
+/** 到達ガードの判定。効果を持たない */
+export type AuthGuardDecision =
+	/** 初回の判定が未了。何もしない */
+	| { readonly kind: 'wait' }
+	/** 現在の経路に留まってよい */
+	| { readonly kind: 'allow' }
+	| {
+			readonly kind: 'redirect';
+			readonly to: string;
+			/** 振り替えの後に保持すべき戻り先。`null` は破棄を意味する */
+			readonly returnTo: string | null;
+	  };
+
+export interface AuthGuardInput {
+	readonly stage: AuthStage;
+	/** 現在の経路。根からの相対パス（`pathname` と問い合わせ文字列） */
+	readonly currentPath: string;
+	readonly routes: AuthRoutes;
+	/** 保持されている戻り先。無ければ `null` */
+	readonly returnTo: string | null;
+}
+
 export interface AuthStore {
 	readonly user: User | null;
 	/** 初回の認証状態の判定が完了したか。1回の購読の中では false へ戻らない */
@@ -78,6 +112,8 @@ export interface AuthStore {
 	readonly requiresEmailVerification: boolean;
 	/** 認証の段階。到達の判断はこれを見る */
 	readonly stage: AuthStage;
+	/** 認証の経路。画面と到達ガードが読む唯一の出所 */
+	readonly routes: AuthRoutes;
 
 	signIn(email: string, password: string): Promise<AuthResult>;
 	/** 成功時はサインイン済みにし、確認メールを送る */
@@ -97,6 +133,15 @@ export interface AuthStore {
 }
 
 export type CreateAuthStore = (auth: Auth, config: AuthConfig) => AuthStore;
+
+/** 到達の制御。組み込み側は根の配置でこれを1つ置き、子を包む */
+export interface AuthGateProps {
+	readonly store: AuthStore;
+	/** 到達を許された利用者に見せるもの */
+	readonly children: Snippet;
+	/** 初回の判定が済むまでのあいだ見せるもの。省略時は何も描画しない */
+	readonly pending?: Snippet;
+}
 
 // =============================================================================
 // 文言
@@ -171,34 +216,4 @@ export interface AuthBaseProps {
 	readonly messages?: AuthMessagesOverride;
 	/** 画面の上部へ差し込む要素。組み込み側の名乗り（題字など）を置く */
 	readonly header?: Snippet;
-}
-
-export interface SignInProps extends AuthBaseProps {
-	readonly onSignedIn: () => void;
-	readonly onRequestPasswordReset: () => void;
-	/** 自由登録が許可されているときだけ呼ばれる */
-	readonly onRequestSignUp?: () => void;
-}
-
-export interface SignUpProps extends AuthBaseProps {
-	readonly onSignedUp: () => void;
-	readonly onRequestSignIn: () => void;
-	readonly onRequestPasswordReset: () => void;
-}
-
-export interface VerifyEmailProps extends AuthBaseProps {
-	readonly onVerified: () => void;
-	readonly onSignOut: () => void;
-	/** サインアウトを終えてから呼ばれる */
-	readonly onRequestSignUpWithAnotherEmail: () => void;
-}
-
-export interface PasswordChangeProps extends AuthBaseProps {
-	readonly onChanged: () => void;
-	readonly onCancel: () => void;
-}
-
-export interface PasswordResetProps extends AuthBaseProps {
-	readonly onRequested: () => void;
-	readonly onRequestSignIn: () => void;
 }
