@@ -9,6 +9,8 @@
 	const config: AuthConfig = {
 		// 自由登録の可否。Firebase 側の設定と揃えるのは組み込み側の運用
 		selfRegistration: true,
+		// メールアドレスの確認を求めるか。false なら登録のあとに確認メールを送らない
+		emailVerification: true,
 		// 確認と再設定の完了後に戻る URL。承認済みドメインに含まれている必要がある
 		continueUrl: 'http://localhost:4173/'
 	};

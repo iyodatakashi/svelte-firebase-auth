@@ -53,7 +53,7 @@
 以下の変更は、組み込み側（markn ほか）に再検証を要求する。
 
 - `AuthErrorKind` の増減 — 文言の網羅に波及する。**本設計は markn design の8種から10種へ広げている**（`registration-disabled` / `network-error`）
-- `AuthStore` / `AuthConfig` / 画面の props の形の変更
+- `AuthStore` / `AuthConfig` / 画面の props の形の変更（**`AuthStage` の段階の増減を含む**。組み込み側の分岐の網羅に波及する）
 - 確認済みの反映の方法の変更（組み込み側のアクセス制御の成立に直結する）
 - peer 依存の版の要求の変更
 
@@ -200,7 +200,7 @@ sequenceDiagram
 
 **流れの上の決定**
 
-- **確認メールの送信は `signUp` の中で行う**（要件 4.2）。画面が2手続きを順に呼ぶ形にすると、送信の失敗が登録の成否と混ざる
+- **確認メールの送信は `signUp` の中で行う**（要件 4.2）。画面が2手続きを順に呼ぶ形にすると、送信の失敗が登録の成否と混ざる。**`emailVerification: false` の組み込み先では送らない**（要件 1.11）
 - **確認の完了は購読では届かない。** `onAuthStateChanged` も `onIdTokenChanged` も発火しないため、取り直しが唯一の検知手段である（→ `research.md`）
 - **リンクを開いた先の処理はライブラリの外**。Firebase の既定のアクションハンドラが行い、その後 `continueUrl` へ進む
 
@@ -326,6 +326,8 @@ export type AuthResult = { readonly ok: true } | { readonly ok: false; readonly 
 export interface AuthConfig {
 	/** 登録の入口を画面に出すか。登録 API そのものは組み込み側が Firebase 側の設定で塞ぐ */
 	readonly selfRegistration: boolean;
+	/** メールアドレスの確認を求めるか。求めない場合、登録の後に確認メールを送らない */
+	readonly emailVerification: boolean;
 	/** 確認と再設定の完了後に戻る URL。組み込み側の承認済みドメインである必要がある */
 	readonly continueUrl: string;
 }
@@ -475,6 +477,9 @@ export interface AuthStore {
 	readonly email: string | null;
 	readonly isEmailVerified: boolean;
 	readonly canSelfRegister: boolean;
+	readonly requiresEmailVerification: boolean;
+	/** 認証の段階。到達の判断はこれを見る */
+	readonly stage: AuthStage;
 
 	signIn(email: string, password: string): Promise<AuthResult>;
 	/** 成功時はサインイン済みにし、確認メールを送る */
@@ -797,3 +802,32 @@ Firebase のエラーコードを、**利用者への案内が分かれる粒度
 - 規則のほうが広すぎたため、`structure.md` の当該項目を置き換えた（→ `structure.md`「Naming Conventions」）
 
 **これは公開面の破壊的変更である**（→ Revalidation Triggers）。
+
+### メールアドレスの確認を求めるかどうかを、設定で切り替える
+
+- **Context**: 要件 1.11。確認を必須にしていないプロジェクトにも組み込めるようにする（2026-08-23 の依頼）
+- **Findings**: **ライブラリはもともと到達を妨げていない。** `isEmailVerified` は事実を公開するだけで、`VerifyEmail` は組み込み側が出すか決める画面であり、到達ガードはどこにも無い。確認を押しつけていた箇所は `signUp` が無条件に確認メールを送ることの1点だけだった。求めない組み込み先では、**登録のたびに「確認してください」というメールが届いてしまう**
+- **Alternatives Considered**:
+  1. 設定を置かず、組み込み側が `VerifyEmail` を出さないことで済ませる — 画面は出ないが**メールは届いてしまう**。利用者から見た問題が残る
+  2. 到達ガードごとライブラリへ持ち込み、`emailVerification` で強制する — 「到達の判断は組み込み側」（product.md）に反する。組み込み側の判断を内部に抱えることになる
+  3. 省略可能にして既定を `true` にする — 「欠損データを許容する分岐を残さない」（CLAUDE.md）に反する。`selfRegistration` も必須であり、揃わない
+- **Selected Approach**: `AuthConfig.emailVerification: boolean` を**必須の項目**として置き、`signUp` の自動送信だけを制御する。`AuthStore.requiresEmailVerification` で公開し、組み込み側が到達の判断に使えるようにする。`sendEmailVerification` は設定によらず呼べる
+- **Rationale**: **この設定が制御するのは「自動で送るか」だけ**であり、到達ガードは設定の有無によらず組み込み側に残る。境界を動かさずに、確認を求めない組み込み先を受け入れられる
+- **Trade-offs**: `AuthConfig` に必須の項目が増える（公開面の破壊的変更）。既存の組み込み先が無いうちに入れる
+- **Follow-up**: エミュレータで、`emailVerification: false` のとき確認メールが**実際に発行されない**ことを確かめた（モックでは「呼ばなかったこと」しか分からない）
+
+### 到達の「判定」はライブラリが持ち、「遷移」は組み込み側に残す
+
+- **Context**: 2026-08-23 の指摘。「認証状態をチェックして、ログイン画面に戻すかどうかを判定する仕組みを組み込み側に任せると、共通の仕組みを毎回組み込み側で作ることになる」
+- **Findings**: 判定と遷移は分けられる。
+  - **判定**（いまどの段階か）は `isResolved` / `isLoggedIn` / `emailVerification` / `isEmailVerified` の組み合わせだけで決まり、アプリの知識を必要としない。**どの組み込み先でも同じ**
+  - **遷移**（その段階で何をするか）は、SvelteKit の `goto` か画面の差し替えかモーダルかで分かれる。**アプリごとに違う**
+  - 判定を各組み込み先へ委ねると誤りが再生産される。**実際、ショーケースの判定は要件 1.11 を足した際に `requiresEmailVerification` を見落としており、確認を求めない設定でも確認待ちへ送っていた**（同じ判定を2箇所で書いた結果）
+- **Alternatives Considered**:
+  1. 現状のまま、状態を個別に公開して組み込み側が組み立てる — 同じ判定が組み込み先の数だけ書かれ、上記の取りこぼしが繰り返される
+  2. 遷移までライブラリが行う（`goto` を呼ぶ／到達ガードのコンポーネントを持つ）— `$app/*` に依存し、SvelteKit 以外で使えなくなる（→ `tech.md`）。product.md の「担当しないこと」に反する
+  3. 5画面の出し分けごと引き受けるコンポーネントを公開する — 判定に加えてアプリの画面構成まで規定することになる。**要求が確認できてから足す**（省略可能な追加は破壊的変更ではない）
+- **Selected Approach**: `AuthStage`（`unresolved` / `signed-out` / `email-unverified` / `ready`）を `AuthStore.stage` として公開する。**判定だけを持ち、遷移は行わない**
+- **Rationale**: 境界（ルーティングに依存しない・遷移を自身で行わない）を動かさずに、実際に重複していた部分だけを取り除ける。`unresolved` を独立させることで、「まだ分からない」を「サインインしていない」と取り違える誤り（要件 2-3 の注）も型で防げる
+- **Trade-offs**: `AuthStore` に項目が増える（公開面の破壊的変更）。段階の増減は組み込み側の分岐に波及する（→ Revalidation Triggers）
+- **Follow-up**: **到達の判断は状態から導く**こと。サインインのコールバックで一度だけ切り替える形にすると、既にサインイン済みで開き直した利用者が素通りする。ショーケースをこの形にし、再読み込みで素通りしないことを E2E で確かめた

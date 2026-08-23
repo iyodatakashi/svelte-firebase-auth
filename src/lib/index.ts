@@ -20,6 +20,7 @@ export type {
 	AuthMessages,
 	AuthMessagesOverride,
 	AuthResult,
+	AuthStage,
 	AuthStore,
 	CreateAuthStore,
 	PasswordChangeProps,

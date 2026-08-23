@@ -61,3 +61,14 @@ test('パスワードの再設定の要求 — 要件 7.1', async ({ page }) => 
 	).toBeVisible();
 	await expect(page.getByText('迷惑メールフォルダ', { exact: false })).toBeVisible();
 });
+
+test('未確認のまま開き直しても、確認待ちを素通りしない — 要件 5 の注', async ({ page }) => {
+	await signUp(page, uniqueEmail('reload'));
+	await expect(page.getByRole('heading', { name: 'メールアドレスの確認' })).toBeVisible();
+
+	// サインインしたまま開き直す。到達の判断を状態から導いていないと、ここで素通りする
+	await page.reload();
+
+	await expect(page.getByRole('heading', { name: 'メールアドレスの確認' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'サインイン済み' })).not.toBeVisible();
+});

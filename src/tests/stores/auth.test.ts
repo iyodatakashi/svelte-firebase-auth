@@ -14,7 +14,14 @@ vi.mock('firebase/auth', () => firebaseAuthMock);
 
 const { createAuthStore } = await import('$lib/stores/auth.svelte');
 
-const config = { selfRegistration: true, continueUrl: 'https://example.com/after' };
+const config = {
+	selfRegistration: true,
+	emailVerification: true,
+	continueUrl: 'https://example.com/after'
+};
+
+/** メールアドレスの確認を求めない組み込み先 */
+const withoutVerification = { ...config, emailVerification: false };
 
 beforeEach(resetFirebaseAuthMock);
 
@@ -408,5 +415,113 @@ describe('パスワードの再設定 — 要件 7.1, 7.2', () => {
 		const result = await store.sendPasswordReset('user@example.com');
 
 		expect(result.ok === false && result.error.kind).toBe('too-many-requests');
+	});
+});
+
+describe('メールアドレスの確認を求めるかどうか — 要件 1.11, 4.2', () => {
+	it('求める設定では、登録のあとに確認メールを送る', async () => {
+		const store = createAuthStore(fakeAuth(fakeUser()), config);
+		expect((await store.signUp('user@example.com', 'secret')).ok).toBe(true);
+		expect(firebaseAuthMock.sendEmailVerification).toHaveBeenCalledOnce();
+	});
+
+	it('求めない設定では、登録のあとに確認メールを送らない', async () => {
+		const store = createAuthStore(fakeAuth(fakeUser()), withoutVerification);
+		expect((await store.signUp('user@example.com', 'secret')).ok).toBe(true);
+		expect(firebaseAuthMock.sendEmailVerification).not.toHaveBeenCalled();
+	});
+
+	it('求めない設定でも、アカウントの作成そのものは変わらない', async () => {
+		const store = createAuthStore(fakeAuth(fakeUser()), withoutVerification);
+		await store.signUp('User@Example.com', 'secret');
+		expect(firebaseAuthMock.createUserWithEmailAndPassword).toHaveBeenCalledWith(
+			expect.anything(),
+			'user@example.com',
+			'secret'
+		);
+	});
+
+	it('求めない設定でも、明示的に要求されれば確認メールを送る', async () => {
+		const store = createAuthStore(fakeAuth(fakeUser()), withoutVerification);
+		expect((await store.sendEmailVerification()).ok).toBe(true);
+		expect(firebaseAuthMock.sendEmailVerification).toHaveBeenCalledOnce();
+	});
+
+	it('確認を求めるかどうかを公開する', () => {
+		expect(createAuthStore(fakeAuth(), config).requiresEmailVerification).toBe(true);
+		expect(createAuthStore(fakeAuth(), withoutVerification).requiresEmailVerification).toBe(false);
+	});
+
+	it('設定はストアごとに独立している', () => {
+		const requiring = createAuthStore(fakeAuth(), config);
+		const notRequiring = createAuthStore(fakeAuth(), withoutVerification);
+		expect([requiring.requiresEmailVerification, notRequiring.requiresEmailVerification]).toEqual([
+			true,
+			false
+		]);
+	});
+});
+
+describe('認証の段階 — 要件 2.12', () => {
+	it('開始する前は、まだ分からない', () => {
+		expect(createAuthStore(fakeAuth(), config).stage).toBe('unresolved');
+	});
+
+	it('サインインしていなければ、サインアウト済みとして返す', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(null);
+		expect(store.stage).toBe('signed-out');
+	});
+
+	it('確認を求める設定で未確認なら、確認待ちとして返す', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: false }));
+		expect(store.stage).toBe('email-unverified');
+	});
+
+	it('確認を求める設定で確認済みなら、通過として返す', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: true }));
+		expect(store.stage).toBe('ready');
+	});
+
+	it('確認を求めない設定なら、未確認でも通過として返す', () => {
+		const store = createAuthStore(fakeAuth(), withoutVerification);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: false }));
+		expect(store.stage).toBe('ready');
+	});
+
+	it('停止すると、まだ分からないへ戻る', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		store.start();
+		emitAuthState(fakeUser({ emailVerified: true }));
+		store.stop();
+		expect(store.stage).toBe('unresolved');
+	});
+
+	it('確認が済んだ時点で、確認待ちから通過へ移る', async () => {
+		const current = fakeUser({ emailVerified: false });
+		const store = createAuthStore(fakeAuth(current), config);
+		store.start();
+		emitAuthState(current);
+		expect(store.stage).toBe('email-unverified');
+
+		firebaseAuthMock.reload.mockImplementationOnce(async () => {
+			Object.assign(current, { emailVerified: true });
+		});
+		await store.refreshVerification();
+		expect(store.stage).toBe('ready');
+	});
+
+	it('サインアウト済みと、まだ分からないを取り違えない', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		expect(store.stage).toBe('unresolved');
+		store.start();
+		emitAuthState(null);
+		expect(store.stage).toBe('signed-out');
 	});
 });

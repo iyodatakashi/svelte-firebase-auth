@@ -5,7 +5,11 @@ import { createAuthStore } from '$lib/stores/auth.svelte';
 import type { AuthStore } from '$lib/models/auth/auth.types';
 import { clearEmulatorUsers, createEmulatorAuth, fetchOobCodes } from '../support/emulator';
 
-const config = { selfRegistration: true, continueUrl: 'http://localhost:4173/' };
+const config = {
+	selfRegistration: true,
+	emailVerification: true,
+	continueUrl: 'http://localhost:4173/'
+};
 
 let auth: Auth;
 let store: AuthStore;
@@ -133,5 +137,25 @@ describe('未登録のメールアドレスへの再設定の要求 — 要件 7
 				(each) => each.requestType === 'PASSWORD_RESET' && each.email === 'nobody@example.com'
 			)
 		).toEqual([]);
+	});
+});
+
+describe('メールアドレスの確認を求めない組み込み先 — 要件 1.11, 4.2', () => {
+	it('登録してもサインイン済みになり、確認メールは発行されない', async () => {
+		const { auth: other, dispose: disposeOther } = createEmulatorAuth();
+		const notRequiring = createAuthStore(other, { ...config, emailVerification: false });
+		notRequiring.start();
+
+		const email = 'no-verification@example.com';
+		expect((await notRequiring.signUp(email, 'secret-password')).ok).toBe(true);
+		expect(notRequiring.isLoggedIn).toBe(true);
+		expect(notRequiring.requiresEmailVerification).toBe(false);
+
+		// 実際に確認メールが発行されていないことを、エミュレータ側で確かめる
+		const codes = await fetchOobCodes();
+		expect(codes.filter((each) => each.email === email)).toEqual([]);
+
+		notRequiring.stop();
+		await disposeOther();
 	});
 });

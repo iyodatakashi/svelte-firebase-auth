@@ -12,19 +12,36 @@
 
 	const store = getContext<AuthStore>('authStore');
 
-	type ShowcaseView =
-		'sign-in' | 'sign-up' | 'verify-email' | 'password-change' | 'password-reset' | 'signed-in';
+	/** サインインしていない利用者に見せるもの */
+	type PublicView = 'sign-in' | 'sign-up' | 'password-reset';
+	/** 確認を通り抜けた利用者に見せるもの */
+	type PrivateView = 'signed-in' | 'password-change';
 
-	let screen = $state<ShowcaseView>('sign-in');
+	let publicView = $state<PublicView>('sign-in');
+	let privateView = $state<PrivateView>('signed-in');
 
-	// 到達の判断は組み込み側の担当。ライブラリは完了を知らせるだけで、遷移は行わない
-	const afterSignedIn = () => {
-		screen = store.isEmailVerified ? 'signed-in' : 'verify-email';
-	};
+	/**
+	 * 段階の判定は `store.stage` が持つ。組み込み側に残るのは、その段階で何をするかだけ。
+	 *
+	 * **状態から導く。** コールバックで一度だけ切り替える形にすると、既にサインイン済みで
+	 * 開き直した利用者が素通りし、ガードとして働かない
+	 */
+	const view = $derived.by(() => {
+		switch (store.stage) {
+			case 'unresolved':
+				return 'loading';
+			case 'signed-out':
+				return publicView;
+			case 'email-unverified':
+				return 'verify-email';
+			case 'ready':
+				return privateView;
+		}
+	});
 
 	const signOut = async () => {
 		await store.signOut();
-		screen = 'sign-in';
+		publicView = 'sign-in';
 	};
 </script>
 
@@ -32,45 +49,45 @@
 	<p class="showcase-page__brand">ショーケース</p>
 {/snippet}
 
-{#if !store.isResolved}
+{#if view === 'loading'}
 	<p class="showcase-page__loading">読み込み中…</p>
-{:else if screen === 'sign-in'}
+{:else if view === 'sign-in'}
 	<SignIn
 		{store}
 		{header}
-		onSignedIn={afterSignedIn}
-		onRequestPasswordReset={() => (screen = 'password-reset')}
-		onRequestSignUp={() => (screen = 'sign-up')}
+		onSignedIn={() => (privateView = 'signed-in')}
+		onRequestPasswordReset={() => (publicView = 'password-reset')}
+		onRequestSignUp={() => (publicView = 'sign-up')}
 	/>
-{:else if screen === 'sign-up'}
+{:else if view === 'sign-up'}
 	<SignUp
 		{store}
 		{header}
-		onSignedUp={() => (screen = 'verify-email')}
-		onRequestSignIn={() => (screen = 'sign-in')}
-		onRequestPasswordReset={() => (screen = 'password-reset')}
+		onSignedUp={() => (privateView = 'signed-in')}
+		onRequestSignIn={() => (publicView = 'sign-in')}
+		onRequestPasswordReset={() => (publicView = 'password-reset')}
 	/>
-{:else if screen === 'verify-email'}
+{:else if view === 'verify-email'}
 	<VerifyEmail
 		{store}
 		{header}
-		onVerified={() => (screen = 'signed-in')}
-		onSignOut={() => (screen = 'sign-in')}
-		onRequestSignUpWithAnotherEmail={() => (screen = 'sign-up')}
+		onVerified={() => (privateView = 'signed-in')}
+		onSignOut={() => (publicView = 'sign-in')}
+		onRequestSignUpWithAnotherEmail={() => (publicView = 'sign-up')}
 	/>
-{:else if screen === 'password-change'}
+{:else if view === 'password-change'}
 	<PasswordChange
 		{store}
 		{header}
-		onChanged={() => (screen = 'signed-in')}
-		onCancel={() => (screen = 'signed-in')}
+		onChanged={() => (privateView = 'signed-in')}
+		onCancel={() => (privateView = 'signed-in')}
 	/>
-{:else if screen === 'password-reset'}
+{:else if view === 'password-reset'}
 	<PasswordReset
 		{store}
 		{header}
 		onRequested={() => {}}
-		onRequestSignIn={() => (screen = 'sign-in')}
+		onRequestSignIn={() => (publicView = 'sign-in')}
 	/>
 {:else}
 	<section class="showcase-page__signed-in">
@@ -80,7 +97,7 @@
 			メールアドレスの確認: {store.isEmailVerified ? '済み' : '未確認'}
 		</p>
 		<div class="showcase-page__actions">
-			<Button variant="filled" onclick={() => (screen = 'password-change')}>
+			<Button variant="filled" onclick={() => (privateView = 'password-change')}>
 				パスワードを変更する
 			</Button>
 			<Button onclick={signOut}>サインアウト</Button>

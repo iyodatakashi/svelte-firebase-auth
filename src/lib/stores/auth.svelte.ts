@@ -74,8 +74,10 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		} catch (error) {
 			return { ok: false, error: await withPasswordRequirements(error, password) };
 		}
-		// アカウントができていれば、確認メールの送信の失敗を登録の失敗として返さない
-		await sendEmailVerification();
+		if (config.emailVerification) {
+			// アカウントができていれば、確認メールの送信の失敗を登録の失敗として返さない
+			await sendEmailVerification();
+		}
 		return { ok: true };
 	};
 
@@ -205,6 +207,21 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		},
 		get canSelfRegister() {
 			return config.selfRegistration;
+		},
+		get requiresEmailVerification() {
+			return config.emailVerification;
+		},
+		get stage() {
+			if (!isResolved) {
+				return 'unresolved';
+			}
+			if (user === null) {
+				return 'signed-out';
+			}
+			if (config.emailVerification && !isEmailVerified) {
+				return 'email-unverified';
+			}
+			return 'ready';
 		},
 		signIn,
 		signUp,
