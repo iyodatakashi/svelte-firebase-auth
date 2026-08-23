@@ -5,7 +5,7 @@
 	import { resolveMessages } from '$lib/messages/ja';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides }: AuthBaseProps = $props();
+	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -26,7 +26,8 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			// 完了時に遷移しない。段階が変わるため、到達の制御が動かす
+			// 遷移しない。段階が変わるため、到達の制御が動かす
+			onCompleted?.();
 			return;
 		}
 		// 語彙ごとの分岐も文言もこの画面は持たない

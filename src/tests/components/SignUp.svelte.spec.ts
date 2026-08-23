@@ -7,8 +7,9 @@ import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
 
 const setup = async () => {
 	const { store } = fakeStore();
-	const screen = await render(SignUp, { props: { store } });
-	return { screen, store };
+	const onCompleted = vi.fn();
+	const screen = await render(SignUp, { props: { store, onCompleted } });
+	return { screen, store, onCompleted };
 };
 
 const fillAndSubmit = async (
@@ -35,6 +36,13 @@ describe('SignUp — 要件 3 の注', () => {
 
 		await vi.waitFor(() => expect(store.signUp).toHaveBeenCalledOnce());
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('完了を組み込み側へ返す', async () => {
+		const { screen, onCompleted } = await setup();
+		await fillAndSubmit(screen);
+
+		await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledOnce());
 	});
 });
 
@@ -100,8 +108,8 @@ describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5（auth-store-and-screens）'
 			.not.toBeDisabled();
 	});
 
-	it('失敗しても遷移しない', async () => {
-		const { screen, store } = await setup();
+	it('失敗しても遷移せず、完了も返さない', async () => {
+		const { screen, store, onCompleted } = await setup();
 		vi.mocked(store.signUp).mockResolvedValueOnce(failureOf('registration-disabled'));
 		await fillAndSubmit(screen);
 
@@ -109,6 +117,7 @@ describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5（auth-store-and-screens）'
 			.element(screen.getByText(jaMessages.errors['registration-disabled']))
 			.toBeInTheDocument();
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 });
 

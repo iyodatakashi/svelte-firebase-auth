@@ -8,8 +8,9 @@ import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
 
 const setup = async (email: string | null = 'user@example.com') => {
 	const { store, markVerified } = fakeStore({ email });
-	const screen = await render(VerifyEmail, { props: { store } });
-	return { screen, store, markVerified };
+	const onCompleted = vi.fn();
+	const screen = await render(VerifyEmail, { props: { store, onCompleted } });
+	return { screen, store, markVerified, onCompleted };
 };
 
 afterEach(() => {
@@ -83,6 +84,22 @@ describe('VerifyEmail の取り直し — 要件 5.5, 5.6, 5.7（auth-store-and-
 
 		await vi.advanceTimersByTimeAsync(VERIFICATION_POLL_INTERVAL_MS * 4);
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('確認が済んだら、完了を1度だけ組み込み側へ返す', async () => {
+		vi.useFakeTimers();
+		const { store, markVerified, onCompleted } = await setup();
+
+		await vi.advanceTimersByTimeAsync(VERIFICATION_POLL_INTERVAL_MS);
+		expect(onCompleted).not.toHaveBeenCalled();
+
+		vi.mocked(store.refreshVerification).mockImplementationOnce(async () => {
+			markVerified();
+			return true;
+		});
+		await vi.advanceTimersByTimeAsync(VERIFICATION_POLL_INTERVAL_MS * 4);
+
+		expect(onCompleted).toHaveBeenCalledOnce();
 	});
 });
 

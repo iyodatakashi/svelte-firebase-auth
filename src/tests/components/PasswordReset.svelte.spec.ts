@@ -7,8 +7,9 @@ import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
 
 const setup = async () => {
 	const { store } = fakeStore();
-	const screen = await render(PasswordReset, { props: { store } });
-	return { screen, store };
+	const onCompleted = vi.fn();
+	const screen = await render(PasswordReset, { props: { store, onCompleted } });
+	return { screen, store, onCompleted };
 };
 
 const request = async (
@@ -28,14 +29,15 @@ describe('PasswordReset — 要件 7.2, 7.3, 7.4（auth-store-and-screens）', (
 		await expect.element(screen.getByText(jaMessages.passwordResetCheckSpam)).toBeInTheDocument();
 	});
 
-	it('入力したメールアドレスをそのまま渡し、完了しても遷移しない', async () => {
-		const { screen, store } = await setup();
+	it('入力したメールアドレスをそのまま渡し、完了しても遷移せず、完了を返す', async () => {
+		const { screen, store, onCompleted } = await setup();
 		await request(screen, ' User@Example.COM ');
 
 		await vi.waitFor(() =>
 			expect(store.sendPasswordReset).toHaveBeenCalledWith('User@Example.COM')
 		);
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+		expect(onCompleted).toHaveBeenCalledOnce();
 	});
 
 	it('登録されているアドレスと未登録のアドレスで、同じ表示になる', async () => {
@@ -90,12 +92,13 @@ describe('PasswordReset の失敗 — 要件 7.6（auth-store-and-screens）', (
 	});
 
 	it('失敗しても入力した内容を失わせず、完了として示さない', async () => {
-		const { screen, store } = await setup();
+		const { screen, store, onCompleted } = await setup();
 		vi.mocked(store.sendPasswordReset).mockResolvedValueOnce(failureOf('invalid-email'));
 		await request(screen, 'not-an-email');
 
 		await expect.element(screen.getByText(jaMessages.errors['invalid-email'])).toBeInTheDocument();
 		await expect.element(screen.getByLabelText(jaMessages.emailLabel)).toHaveValue('not-an-email');
 		await expect.element(screen.getByText(jaMessages.passwordResetSent)).not.toBeInTheDocument();
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 });

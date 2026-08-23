@@ -5,7 +5,7 @@
 	import { resolveMessages } from '$lib/messages/ja';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides }: AuthBaseProps = $props();
+	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -32,6 +32,7 @@
 			currentPassword = '';
 			newPassword = '';
 			hasChanged = true;
+			onCompleted?.();
 			return;
 		}
 		// 現在のパスワードの誤りかどうかの判別も、文脈を渡してこの関数に任せる

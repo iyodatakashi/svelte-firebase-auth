@@ -7,8 +7,9 @@ import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
 
 const setup = async (options: Parameters<typeof fakeStore>[0] = {}) => {
 	const { store } = fakeStore(options);
-	const screen = await render(SignIn, { props: { store } });
-	return { screen, store };
+	const onCompleted = vi.fn();
+	const screen = await render(SignIn, { props: { store, onCompleted } });
+	return { screen, store, onCompleted };
 };
 
 const signIn = async (
@@ -35,6 +36,24 @@ describe('SignIn — 要件 3 の注', () => {
 
 		await vi.waitFor(() => expect(store.signIn).toHaveBeenCalledOnce());
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('完了を組み込み側へ返す', async () => {
+		const { screen, onCompleted } = await setup();
+		await signIn(screen);
+
+		await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledOnce());
+	});
+
+	it('失敗したときは完了を返さない', async () => {
+		const { screen, store, onCompleted } = await setup();
+		vi.mocked(store.signIn).mockResolvedValueOnce(failureOf('invalid-credential'));
+		await signIn(screen, 'user@example.com', 'wrong');
+
+		await expect
+			.element(screen.getByText(jaMessages.errors['invalid-credential']))
+			.toBeInTheDocument();
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 });
 

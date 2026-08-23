@@ -6,7 +6,7 @@
 	import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides }: AuthBaseProps = $props();
+	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -16,15 +16,20 @@
 	let isResendBlocked = $state(false);
 	let isResending = $state(false);
 	let isLeaving = $state(false);
+	// 完了は1度だけ返す。取り直しは繰り返し走る
+	let hasCompleted = false;
 
 	// 表示されている間だけ取り直す。停止し損ねると、画面を離れた後も通信が続く
 	$effect(() => {
 		// 確認が済めば段階が変わる。この画面は遷移せず、到達の制御に任せる
 		const refresh = async () => {
-			if (store.isEmailVerified) {
+			if (hasCompleted || store.isEmailVerified) {
 				return;
 			}
-			await store.refreshVerification();
+			if (await store.refreshVerification()) {
+				hasCompleted = true;
+				onCompleted?.();
+			}
 		};
 
 		const timer = setInterval(refresh, VERIFICATION_POLL_INTERVAL_MS);

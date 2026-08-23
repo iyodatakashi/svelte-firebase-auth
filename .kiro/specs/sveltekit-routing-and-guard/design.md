@@ -238,7 +238,7 @@ sequenceDiagram
 | 2.4          | 経路の欠落を型で示す               | AuthModels                       | `AuthRoutes`（必須の項目）              | —                |
 | 2.5          | 経路の一致の判定                   | AuthGuardResolver                | `resolveAuthGuard`                      | —                |
 | 3.1–3.6      | 画面が行う導線の遷移               | AuthComponents                   | `AuthStore.routes`                      | —                |
-| 3.7          | コールバックを持たない             | AuthModels                       | `AuthBaseProps` ほか                    | —                |
+| 3.7          | 遷移の要求を返さない／完了は返す   | AuthModels                       | `AuthBaseProps.onCompleted`             | —                |
 | 4.1–4.5      | 段階ごとの到達の許可と振り替え     | AuthGuardResolver                | `resolveAuthGuard`                      | 到達ガードの判定 |
 | 4.6          | 段階の変化に追随する               | AuthGate                         | `AuthGate`                              | —                |
 | 4.7          | ブラウザでのみ働く                 | AuthGate                         | —                                       | —                |
@@ -309,10 +309,12 @@ export type AuthGuardDecision =
 			readonly returnTo: string | null;
 	  };
 
-/** 画面の共通の props。コールバックも、題字などのページの要素も持たない */
+/** 画面の共通の props。遷移の要求も、題字などのページの要素も持たない */
 export interface AuthBaseProps {
 	readonly store: AuthStore;
 	readonly messages?: AuthMessagesOverride;
+	/** 画面の役目が果たされたときに呼ばれる。**遷移は行わない**。省略できる */
+	readonly onCompleted?: () => void;
 }
 ```
 
@@ -505,6 +507,7 @@ export interface AuthGateProps {
 **すべての画面に共通する制約**
 
 - **完了時に自ら遷移しない。** サインイン・登録・確認・サインアウトの完了は段階を変えるため、ガードが動かす（要件 3 の注）。**段階を変えない完了（パスワードの変更）は、ガードも動かない。** その画面は完了の状態へ切り替え、次の一手を自分で示す（要件 3-8）
+- **完了は `onCompleted` で組み込み側へ返す。** 遷移は行わない。段階を変える完了ではガードが動くため記録や通知に使い、**段階を変えない完了では、行き先を決められるのは組み込み側だけ**である。渡さない場合の既定を画面が持ち、行き止まりを作らない
 - **段階を変えない導線だけを自ら遷移する**
 - 入力・エラーの提示・処理中の表示・文言は**変更しない**
 

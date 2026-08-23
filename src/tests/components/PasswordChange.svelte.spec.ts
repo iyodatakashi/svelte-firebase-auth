@@ -5,9 +5,9 @@ import PasswordChange from '$lib/components/PasswordChange.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
 
-const setup = async () => {
+const setup = async (onCompleted?: () => void) => {
 	const { store } = fakeStore();
-	const screen = await render(PasswordChange, { props: { store } });
+	const screen = await render(PasswordChange, { props: { store, onCompleted } });
 	return { screen, store };
 };
 
@@ -53,6 +53,26 @@ describe('PasswordChange — 要件 3.5', () => {
 		await expect
 			.element(screen.getByLabelText(jaMessages.currentPasswordLabel))
 			.not.toBeInTheDocument();
+	});
+
+	it('完了を組み込み側へ返す', async () => {
+		const onCompleted = vi.fn();
+		const { screen } = await setup(onCompleted);
+		await fillAndSubmit(screen);
+
+		await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledOnce());
+	});
+
+	it('失敗したときは完了を返さない', async () => {
+		const onCompleted = vi.fn();
+		const { screen, store } = await setup(onCompleted);
+		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
+		await fillAndSubmit(screen, 'wrong');
+
+		await expect
+			.element(screen.getByText(jaMessages.errorCurrentPasswordInvalid))
+			.toBeInTheDocument();
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 
 	it('完了したら、次の一手を1つだけ示し、それが既定の行き先へ遷移する', async () => {

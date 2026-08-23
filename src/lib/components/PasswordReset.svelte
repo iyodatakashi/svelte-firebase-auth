@@ -5,7 +5,7 @@
 	import { resolveMessages } from '$lib/messages/ja';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides }: AuthBaseProps = $props();
+	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -30,8 +30,9 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			// 段階は変わらない。送ったことを示すだけで、この画面から離れない
+			// 段階は変わらない。送ったことを示し、その先は組み込み側が決める
 			hasRequested = true;
+			onCompleted?.();
 			return;
 		}
 		errorMessage = authErrorMessageOf(result.error, messages, 'password-reset');

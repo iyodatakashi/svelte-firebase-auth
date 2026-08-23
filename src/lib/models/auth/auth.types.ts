@@ -215,4 +215,20 @@ export interface AuthBaseProps {
 	readonly store: AuthStore;
 	/** 渡さなかった項目は同梱の日本語を使う */
 	readonly messages?: AuthMessagesOverride;
+	/**
+	 * 画面の役目が果たされたときに呼ばれる。**遷移は行わない**。
+	 *
+	 * サインイン・登録・確認は、完了で段階が変わるため到達の制御が利用者を動かす。
+	 * **パスワードの変更と再設定メールの送信は段階を変えない**ため、そこで何をするかを
+	 * 決められるのは組み込み側だけである。
+	 *
+	 * | 画面           | 呼ばれる時点                     |
+	 * | -------------- | -------------------------------- |
+	 * | SignIn         | サインインに成功したとき         |
+	 * | SignUp         | 登録に成功したとき               |
+	 * | VerifyEmail    | 確認が済んだと分かったとき（1度） |
+	 * | PasswordChange | パスワードを変更したとき         |
+	 * | PasswordReset  | 再設定用のメールを送ったとき     |
+	 */
+	readonly onCompleted?: () => void;
 }
