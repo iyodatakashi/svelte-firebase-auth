@@ -6,7 +6,7 @@
 	import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, header }: AuthBaseProps = $props();
+	let { store, messages: overrides }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -82,12 +82,6 @@
 </script>
 
 <section class="verify-email">
-	{#if header}
-		<div class="verify-email__header">{@render header()}</div>
-	{/if}
-
-	<h2 class="verify-email__title">{messages.verifyEmailTitle}</h2>
-
 	{#if store.email}
 		<p class="verify-email__sent-to">{messages.verifyEmailSentTo(store.email)}</p>
 	{/if}
@@ -124,11 +118,6 @@
 		flex-direction: column;
 		gap: 1rem;
 		color: var(--svelte-ui-text-color);
-	}
-
-	.verify-email__title {
-		margin: 0;
-		font-size: var(--svelte-ui-font-size-xl);
 	}
 
 	.verify-email__sent-to,

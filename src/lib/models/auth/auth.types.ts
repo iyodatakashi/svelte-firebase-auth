@@ -160,19 +160,16 @@ export interface AuthMessages {
 	readonly newPasswordLabel: string;
 
 	// サインイン
-	readonly signInTitle: string;
 	readonly signInSubmit: string;
 	readonly signInToPasswordReset: string;
 	readonly signInToSignUp: string;
 
 	// 登録
-	readonly signUpTitle: string;
 	readonly signUpSubmit: string;
 	readonly signUpToSignIn: string;
 	readonly signUpToPasswordReset: string;
 
 	// 確認待ち
-	readonly verifyEmailTitle: string;
 	readonly verifyEmailSentTo: (email: string) => string;
 	readonly verifyEmailCheckSpam: string;
 	readonly verifyEmailResend: string;
@@ -181,13 +178,11 @@ export interface AuthMessages {
 	readonly verifyEmailSignOut: string;
 
 	// パスワードの変更
-	readonly passwordChangeTitle: string;
 	readonly passwordChangeSubmit: string;
 	readonly passwordChangeCancel: string;
 	readonly passwordChangeDone: string;
 
 	// パスワードの再設定
-	readonly passwordResetTitle: string;
 	readonly passwordResetDescription: string;
 	readonly passwordResetSubmit: string;
 	readonly passwordResetSent: string;
@@ -210,10 +205,12 @@ export type AuthMessagesOverride = Partial<Omit<AuthMessages, 'errors'>> & {
 // 画面の props
 // =============================================================================
 
+/**
+ * 画面の props。**題字・名乗りなどのページの要素は持たない**。
+ * 画面をどう名乗らせ、どこへ置くかは組み込み側が決める
+ */
 export interface AuthBaseProps {
 	readonly store: AuthStore;
 	/** 渡さなかった項目は同梱の日本語を使う */
 	readonly messages?: AuthMessagesOverride;
-	/** 画面の上部へ差し込む要素。組み込み側の名乗り（題字など）を置く */
-	readonly header?: Snippet;
 }

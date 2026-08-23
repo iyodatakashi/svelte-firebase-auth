@@ -31,8 +31,18 @@ describe('公開面 — 要件 1.3, 1.5', () => {
 		const screen = await render(SignIn, { props });
 
 		await expect
-			.element(screen.getByRole('heading', { name: jaMessages.signInTitle }))
+			.element(screen.getByRole('button', { name: jaMessages.signInSubmit }))
 			.toBeInTheDocument();
+	});
+
+	it('各画面は題字などのページの要素を持たない。置く側が決めるため', async () => {
+		for (const screen of [SignIn, SignUp, VerifyEmail, PasswordChange, PasswordReset]) {
+			const { store } = fakeStore();
+			const rendered = await render(screen, { props: { store } });
+
+			expect(rendered.container.querySelector('h1, h2, h3, h4, h5, h6')).toBeNull();
+			await rendered.unmount();
+		}
 	});
 
 	it('判定の純関数と戻り先の保持は公開しない。到達の制御の内部実装であるため', () => {

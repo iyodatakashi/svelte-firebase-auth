@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createRawSnippet } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import SignIn from '$lib/components/SignIn.svelte';
@@ -98,19 +97,7 @@ describe('SignIn の処理中 — 要件 3.4（auth-store-and-screens）', () =>
 	});
 });
 
-describe('SignIn の外形 — 要件 9.6, 9.8, 9.9（auth-store-and-screens）', () => {
-	it('組み込み側の名乗りを画面の上部へ差し込める', async () => {
-		const { store } = fakeStore();
-		const screen = await render(SignIn, {
-			props: {
-				store,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				header: createRawSnippet(() => ({ render: () => '<h1>組み込み側の名乗り</h1>' })) as any
-			}
-		});
-		await expect.element(screen.getByText('組み込み側の名乗り')).toBeInTheDocument();
-	});
-
+describe('SignIn の外形 — 要件 9.8, 9.9（auth-store-and-screens）', () => {
 	it('画面全体を占める前提の外形を持たない', async () => {
 		const { screen } = await setup();
 		const root = screen.container.querySelector('.sign-in');

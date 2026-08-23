@@ -5,7 +5,7 @@
 	import { resolveMessages } from '$lib/messages/ja';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, header }: AuthBaseProps = $props();
+	let { store, messages: overrides }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -35,12 +35,6 @@
 </script>
 
 <section class="sign-in">
-	{#if header}
-		<div class="sign-in__header">{@render header()}</div>
-	{/if}
-
-	<h2 class="sign-in__title">{messages.signInTitle}</h2>
-
 	<form class="sign-in__form" onsubmit={submit} novalidate>
 		<div class="sign-in__field">
 			<label class="sign-in__label" for="sign-in-email">{messages.emailLabel}</label>
@@ -94,11 +88,6 @@
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
-	}
-
-	.sign-in__title {
-		margin: 0;
-		font-size: var(--svelte-ui-font-size-xl);
 	}
 
 	.sign-in__form {

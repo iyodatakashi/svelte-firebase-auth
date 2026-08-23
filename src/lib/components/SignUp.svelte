@@ -5,7 +5,7 @@
 	import { resolveMessages } from '$lib/messages/ja';
 	import type { AuthBaseProps, AuthError } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, header }: AuthBaseProps = $props();
+	let { store, messages: overrides }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -38,12 +38,6 @@
 </script>
 
 <section class="sign-up">
-	{#if header}
-		<div class="sign-up__header">{@render header()}</div>
-	{/if}
-
-	<h2 class="sign-up__title">{messages.signUpTitle}</h2>
-
 	<form class="sign-up__form" onsubmit={submit} novalidate>
 		<div class="sign-up__field">
 			<label class="sign-up__label" for="sign-up-email">{messages.emailLabel}</label>
@@ -97,11 +91,6 @@
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
-	}
-
-	.sign-up__title {
-		margin: 0;
-		font-size: var(--svelte-ui-font-size-xl);
 	}
 
 	.sign-up__form {

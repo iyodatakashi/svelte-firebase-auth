@@ -5,7 +5,7 @@
 	import { resolveMessages } from '$lib/messages/ja';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, header }: AuthBaseProps = $props();
+	let { store, messages: overrides }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -38,12 +38,6 @@
 </script>
 
 <section class="password-change">
-	{#if header}
-		<div class="password-change__header">{@render header()}</div>
-	{/if}
-
-	<h2 class="password-change__title">{messages.passwordChangeTitle}</h2>
-
 	<form class="password-change__form" onsubmit={submit} novalidate>
 		<div class="password-change__field">
 			<label class="password-change__label" for="password-change-current">
@@ -99,11 +93,6 @@
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
-	}
-
-	.password-change__title {
-		margin: 0;
-		font-size: var(--svelte-ui-font-size-xl);
 	}
 
 	.password-change__form {
