@@ -200,7 +200,7 @@ sequenceDiagram
 
 **流れの上の決定**
 
-- **確認メールの送信は `signUp` の中で行う**（要件 4.2）。画面が2手続きを順に呼ぶ形にすると、送信の失敗が登録の成否と混ざる
+- **確認メールの送信は `signUp` の中で行う**（要件 4.2）。画面が2手続きを順に呼ぶ形にすると、送信の失敗が登録の成否と混ざる。**`emailVerification: false` の組み込み先では送らない**（要件 1.11）
 - **確認の完了は購読では届かない。** `onAuthStateChanged` も `onIdTokenChanged` も発火しないため、取り直しが唯一の検知手段である（→ `research.md`）
 - **リンクを開いた先の処理はライブラリの外**。Firebase の既定のアクションハンドラが行い、その後 `continueUrl` へ進む
 
@@ -326,6 +326,8 @@ export type AuthResult = { readonly ok: true } | { readonly ok: false; readonly 
 export interface AuthConfig {
 	/** 登録の入口を画面に出すか。登録 API そのものは組み込み側が Firebase 側の設定で塞ぐ */
 	readonly selfRegistration: boolean;
+	/** メールアドレスの確認を求めるか。求めない場合、登録の後に確認メールを送らない */
+	readonly emailVerification: boolean;
 	/** 確認と再設定の完了後に戻る URL。組み込み側の承認済みドメインである必要がある */
 	readonly continueUrl: string;
 }
@@ -475,6 +477,7 @@ export interface AuthStore {
 	readonly email: string | null;
 	readonly isEmailVerified: boolean;
 	readonly canSelfRegister: boolean;
+	readonly requiresEmailVerification: boolean;
 
 	signIn(email: string, password: string): Promise<AuthResult>;
 	/** 成功時はサインイン済みにし、確認メールを送る */
@@ -797,3 +800,16 @@ Firebase のエラーコードを、**利用者への案内が分かれる粒度
 - 規則のほうが広すぎたため、`structure.md` の当該項目を置き換えた（→ `structure.md`「Naming Conventions」）
 
 **これは公開面の破壊的変更である**（→ Revalidation Triggers）。
+
+### メールアドレスの確認を求めるかどうかを、設定で切り替える
+
+- **Context**: 要件 1.11。確認を必須にしていないプロジェクトにも組み込めるようにする（2026-08-23 の依頼）
+- **Findings**: **ライブラリはもともと到達を妨げていない。** `isEmailVerified` は事実を公開するだけで、`VerifyEmail` は組み込み側が出すか決める画面であり、到達ガードはどこにも無い。確認を押しつけていた箇所は `signUp` が無条件に確認メールを送ることの1点だけだった。求めない組み込み先では、**登録のたびに「確認してください」というメールが届いてしまう**
+- **Alternatives Considered**:
+  1. 設定を置かず、組み込み側が `VerifyEmail` を出さないことで済ませる — 画面は出ないが**メールは届いてしまう**。利用者から見た問題が残る
+  2. 到達ガードごとライブラリへ持ち込み、`emailVerification` で強制する — 「到達の判断は組み込み側」（product.md）に反する。組み込み側の判断を内部に抱えることになる
+  3. 省略可能にして既定を `true` にする — 「欠損データを許容する分岐を残さない」（CLAUDE.md）に反する。`selfRegistration` も必須であり、揃わない
+- **Selected Approach**: `AuthConfig.emailVerification: boolean` を**必須の項目**として置き、`signUp` の自動送信だけを制御する。`AuthStore.requiresEmailVerification` で公開し、組み込み側が到達の判断に使えるようにする。`sendEmailVerification` は設定によらず呼べる
+- **Rationale**: **この設定が制御するのは「自動で送るか」だけ**であり、到達ガードは設定の有無によらず組み込み側に残る。境界を動かさずに、確認を求めない組み込み先を受け入れられる
+- **Trade-offs**: `AuthConfig` に必須の項目が増える（公開面の破壊的変更）。既存の組み込み先が無いうちに入れる
+- **Follow-up**: エミュレータで、`emailVerification: false` のとき確認メールが**実際に発行されない**ことを確かめた（モックでは「呼ばなかったこと」しか分からない）

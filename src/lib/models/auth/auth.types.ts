@@ -40,6 +40,12 @@ export type AuthResult = { readonly ok: true } | { readonly ok: false; readonly 
 export interface AuthConfig {
 	/** 登録の入口を画面に出すか。登録 API そのものは組み込み側が Firebase 側の設定で塞ぐ */
 	readonly selfRegistration: boolean;
+	/**
+	 * メールアドレスの確認を求めるか。
+	 * 求めない組み込み先では、登録のあとに確認メールを送らない。
+	 * 到達ガード（確認済みでなければ使わせない）は、この設定の有無によらず組み込み側の担当
+	 */
+	readonly emailVerification: boolean;
 	/** 確認と再設定の完了後に戻る URL。組み込み側の承認済みドメインである必要がある */
 	readonly continueUrl: string;
 }
@@ -53,6 +59,8 @@ export interface AuthStore {
 	readonly email: string | null;
 	readonly isEmailVerified: boolean;
 	readonly canSelfRegister: boolean;
+	/** 組み込み先がメールアドレスの確認を求めるか。到達の判断に用いる */
+	readonly requiresEmailVerification: boolean;
 
 	signIn(email: string, password: string): Promise<AuthResult>;
 	/** 成功時はサインイン済みにし、確認メールを送る */

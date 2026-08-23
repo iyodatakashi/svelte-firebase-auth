@@ -11,6 +11,7 @@ export interface FakeStoreOptions {
 	readonly email?: string | null;
 	readonly isEmailVerified?: boolean;
 	readonly canSelfRegister?: boolean;
+	readonly requiresEmailVerification?: boolean;
 	readonly isLoggedIn?: boolean;
 }
 
@@ -31,6 +32,7 @@ export const fakeStore = (options: FakeStoreOptions = {}) => {
 			return isEmailVerified;
 		},
 		canSelfRegister: options.canSelfRegister ?? true,
+		requiresEmailVerification: options.requiresEmailVerification ?? true,
 		signIn: vi.fn(async () => ok),
 		signUp: vi.fn(async () => ok),
 		signOut: vi.fn(async () => undefined),
