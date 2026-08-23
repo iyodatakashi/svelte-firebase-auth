@@ -309,15 +309,15 @@ export type AuthGuardDecision =
 			readonly returnTo: string | null;
 	  };
 
-/** 画面の共通の props。コールバックを持たない */
+/** 画面の共通の props。コールバックも、題字などのページの要素も持たない */
 export interface AuthBaseProps {
 	readonly store: AuthStore;
 	readonly messages?: AuthMessagesOverride;
-	readonly header?: Snippet;
 }
 ```
 
 - **Invariants**: 5画面の props は `AuthBaseProps` のみ。画面ごとの差分は無くなる
+- **題字と名乗りは持たない。** 見出しの階層・名乗り・レイアウトはページの要素であり、画面を置く側が決める。差し込み口（`header`）を残すと、その決定がライブラリと組み込み側に分かれる。題字の文言（`signInTitle` ほか5項目）も `AuthMessages` から外す（実装中の依頼者の判断。→ `auth-store-and-screens` 要件 9-6 の注）
 
 **Implementation Notes**
 

@@ -24,7 +24,8 @@ SvelteKit を前提にして、認証の遷移と到達ガードをライブラ�
 
 **画面の props の変更を破壊的変更として扱う。** 本 spec の実装により、markn 側の `AuthModuleContract` に整合しない箇所が残る。markn 側で扱う。
 
-- **画面ごとの props の型を廃止した。** `SignInProps` / `SignUpProps` / `VerifyEmailProps` / `PasswordChangeProps` / `PasswordResetProps` は無くなり、5画面すべてが `AuthBaseProps`（`store` / `messages?` / `header?`）だけを受け取る
+- **画面ごとの props の型を廃止した。** `SignInProps` / `SignUpProps` / `VerifyEmailProps` / `PasswordChangeProps` / `PasswordResetProps` は無くなり、5画面すべてが `AuthBaseProps`（`store` / `messages?`）だけを受け取る
+- **題字と名乗りの差し込み口を廃止した。** `header?: Snippet` の props と、題字の文言 `signInTitle` / `signUpTitle` / `verifyEmailTitle` / `passwordChangeTitle` / `passwordResetTitle` が無くなった。**見出しは markn 側のページが置く**（→ `auth-store-and-screens` 要件 9-6 の注）
 - **コールバックの props 13 本が公開面から消えた。** `onSignedIn` / `onSignedUp` / `onVerified` / `onChanged` / `onRequested` / `onSignOut` / `onCancel` / `onRequestSignIn` / `onRequestSignUp` / `onRequestPasswordReset` / `onRequestSignUpWithAnotherEmail` — markn 側の薄いアダプタからこれらの配線を落とす
 - **`AuthConfig` に `routes` が必須の項目として加わった。** サインイン・登録・確認待ち・パスワードの再設定の経路と、認証を終えた利用者の既定の行き先を渡す
 - **段階から遷移への対応づけを、markn 側で書かない。** 根の `+layout.svelte` で `AuthGate` を1つ置く。**パスワードの変更の経路は認証の経路に含めない**（含めると、サインイン済みの利用者が追い出される）

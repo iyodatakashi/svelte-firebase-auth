@@ -29,7 +29,7 @@ steering（product.md「まだ決めていないもの」）で最初の spec �
 - `AuthConfig` — `selfRegistration`（登録の入口を画面に出すか）／`continueUrl`（確認・再設定の完了後に戻る URL）
 - `AuthStore` — `user` / `isResolved`（初回の認証状態判定の完了。単調）/ `isLoggedIn` / `email`（正規化済み）/ `isEmailVerified` / `canSelfRegister`、および `signIn` / `signUp` / `signOut` / `changePassword` / `sendPasswordReset` / `sendEmailVerification` / `refreshVerification`
 - `AuthErrorKind` — `invalid-credential` / `invalid-email` / `email-already-in-use` / `weak-password` / `requires-recent-login` / `user-disabled` / `too-many-requests` / `unknown`。`AuthResult` は判別可能な共用体
-- 画面の props — `store` / `messages?`（項目単位の差し替え）/ `header?: Snippet`（組み込み側の名乗り）と、画面ごとの完了・遷移要求のコールバック
+- 画面の props — `store` / `messages?`（項目単位の差し替え）と、画面ごとの完了・遷移要求のコールバック
 
 あわせて満たすべき性質:
 
@@ -277,12 +277,14 @@ Firebase Authentication を使う Svelte アプリケーションのために、
 3. The 各画面 shall 段階を変えない導線の遷移を自身で行い、完了と遷移の要求を組み込み側へ返すコールバックの props を持たない
 4. The 認証ライブラリ shall 画面に出す既定の文言を日本語で同梱する
 5. Where 組み込み側が文言を指定したとき, the 認証ライブラリ shall 指定された項目だけを差し替え、指定のない項目には既定の文言を用いる
-6. The 各画面 shall 組み込み側が画面の上部へ自身の名乗りを差し込める手段を提供する
+6. The 各画面 shall 題字（見出し）などのページの要素を持たず、入力欄・操作・提示だけを描画する
 7. The 各画面 shall 意匠の値を `@14ch/svelte-ui` のトークンから参照し、独自のパレットを持たない
 8. The 各画面 shall 画面全体を占めることを前提とした外形を持たず、組み込み側のレイアウトに置ける形にする
 9. The 各画面 shall ブラウザ標準のダイアログを用いず、`@14ch/svelte-ui` の部品で利用者への提示を行う
 
 **注**: 3 は `sveltekit-routing-and-guard` が書き換えた。もとは「遷移を自身で行わず、完了と遷移の要求をコールバックで組み込み側へ返す」だった。**理由は要件 1-2 と同じ**（→ 要件 1 の注）。段階を変える完了（サインイン・登録・確認・サインアウト）の遷移は到達の制御が行うため、画面が持つのは段階を変えない導線だけである。**この変更で画面の props からコールバックが消え、画面ごとの props の型も `AuthBaseProps` へ一本化された。破壊的変更として扱う。**
+
+**注**: 6 は `sveltekit-routing-and-guard` が書き換えた。もとは「組み込み側が画面の上部へ自身の名乗りを差し込める手段を提供する」であり、`header?: Snippet` の props がこれに当たっていた。**依頼者の判断により、題字も名乗りもページの要素であり、画面を置く側の担当と決まった。** 差し込み口を持つと、見出しの階層とレイアウトの決定がライブラリと組み込み側に分かれる。`header` の props と、各画面が持っていた題字の文言（`signInTitle` ほか5項目）を削除した。**破壊的変更として扱う。**
 
 **注**: 1 は、画面をまるごと渡す形だけを公開することを意味する（→ 筆者が置いた仮定 1）。ストアと部品を組み合わせる余地は本 spec では公開しない。
 
