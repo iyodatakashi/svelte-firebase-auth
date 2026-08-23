@@ -93,8 +93,6 @@
 
 	.password-reset__description {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
 	}
 
 	.password-reset__form {
@@ -122,8 +120,6 @@
 
 	.password-reset__spam {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
 	}
 
 	.password-reset__error {

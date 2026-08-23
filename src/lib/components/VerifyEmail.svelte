@@ -127,11 +127,6 @@
 		margin: 0;
 	}
 
-	.verify-email__spam {
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
-	}
-
 	.verify-email__notice {
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-success-color);
