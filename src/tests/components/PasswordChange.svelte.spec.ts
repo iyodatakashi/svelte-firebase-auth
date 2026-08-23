@@ -31,12 +31,37 @@ describe('PasswordChange — 要件 3.5', () => {
 		);
 	});
 
-	it('完了時には遷移せず、完了したことを利用者に示すのみとする', async () => {
+	it('完了時には自ら遷移せず、完了したことを利用者に示す', async () => {
 		const { screen } = await setup();
 		await fillAndSubmit(screen);
 
 		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).toBeInTheDocument();
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('完了したら、もう押せる意味のない操作と、入力した内容を残さない', async () => {
+		const { screen } = await setup();
+		await fillAndSubmit(screen);
+
+		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.passwordChangeCancel }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByLabelText(jaMessages.currentPasswordLabel))
+			.not.toBeInTheDocument();
+	});
+
+	it('完了したら、次の一手を1つだけ示し、それが既定の行き先へ遷移する', async () => {
+		const { screen } = await setup();
+		await fillAndSubmit(screen);
+
+		await screen.getByRole('button', { name: jaMessages.passwordChangeBack }).click();
+
+		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.afterSignIn);
 	});
 });
 

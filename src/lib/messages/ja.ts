@@ -40,6 +40,7 @@ export const jaMessages: AuthMessages = {
 	passwordChangeSubmit: '変更する',
 	passwordChangeCancel: '取りやめる',
 	passwordChangeDone: 'パスワードを変更しました。',
+	passwordChangeBack: '戻る',
 
 	passwordResetDescription:
 		'登録したメールアドレスを入力してください。再設定用のリンクをお送りします。',

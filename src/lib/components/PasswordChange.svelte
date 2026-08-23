@@ -28,7 +28,9 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			// 段階は変わらない。完了したことを示すだけで、この画面から離れない
+			// 変更したパスワードを画面に残さない
+			currentPassword = '';
+			newPassword = '';
 			hasChanged = true;
 			return;
 		}
@@ -38,53 +40,64 @@
 </script>
 
 <section class="password-change">
-	<form class="password-change__form" onsubmit={submit} novalidate>
-		<div class="password-change__field">
-			<label class="password-change__label" for="password-change-current">
-				{messages.currentPasswordLabel}
-			</label>
-			<Input
-				id="password-change-current"
-				type="password"
-				autocomplete="current-password"
-				enablePasswordVisibilityToggle
-				fullWidth
-				bind:value={currentPassword}
-				disabled={isSubmitting}
-			/>
-		</div>
-
-		<div class="password-change__field">
-			<label class="password-change__label" for="password-change-new">
-				{messages.newPasswordLabel}
-			</label>
-			<Input
-				id="password-change-new"
-				type="password"
-				autocomplete="new-password"
-				enablePasswordVisibilityToggle
-				fullWidth
-				bind:value={newPassword}
-				disabled={isSubmitting}
-			/>
-		</div>
-
-		{#if hasChanged}
-			<p class="password-change__notice" role="status">{messages.passwordChangeDone}</p>
-		{/if}
-		{#if errorMessage}
-			<p class="password-change__error" role="alert">{errorMessage}</p>
-		{/if}
-
+	{#if hasChanged}
+		<!--
+			パスワードの変更は段階を変えないため、到達の制御は利用者を動かさない。
+			完了したまま操作を並べておくと、押せる意味のないものだけが残る。
+			次の一手を1つだけ出す
+		-->
+		<p class="password-change__notice" role="status">{messages.passwordChangeDone}</p>
 		<div class="password-change__actions">
-			<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
-				{messages.passwordChangeSubmit}
-			</Button>
-			<Button onclick={() => goto(store.routes.afterSignIn)} disabled={isSubmitting}>
-				{messages.passwordChangeCancel}
+			<Button variant="filled" onclick={() => goto(store.routes.afterSignIn)}>
+				{messages.passwordChangeBack}
 			</Button>
 		</div>
-	</form>
+	{:else}
+		<form class="password-change__form" onsubmit={submit} novalidate>
+			<div class="password-change__field">
+				<label class="password-change__label" for="password-change-current">
+					{messages.currentPasswordLabel}
+				</label>
+				<Input
+					id="password-change-current"
+					type="password"
+					autocomplete="current-password"
+					enablePasswordVisibilityToggle
+					fullWidth
+					bind:value={currentPassword}
+					disabled={isSubmitting}
+				/>
+			</div>
+
+			<div class="password-change__field">
+				<label class="password-change__label" for="password-change-new">
+					{messages.newPasswordLabel}
+				</label>
+				<Input
+					id="password-change-new"
+					type="password"
+					autocomplete="new-password"
+					enablePasswordVisibilityToggle
+					fullWidth
+					bind:value={newPassword}
+					disabled={isSubmitting}
+				/>
+			</div>
+
+			{#if errorMessage}
+				<p class="password-change__error" role="alert">{errorMessage}</p>
+			{/if}
+
+			<div class="password-change__actions">
+				<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
+					{messages.passwordChangeSubmit}
+				</Button>
+				<Button onclick={() => goto(store.routes.afterSignIn)} disabled={isSubmitting}>
+					{messages.passwordChangeCancel}
+				</Button>
+			</div>
+		</form>
+	{/if}
 </section>
 
 <style>

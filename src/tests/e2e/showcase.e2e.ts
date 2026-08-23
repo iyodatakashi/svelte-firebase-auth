@@ -140,6 +140,23 @@ test('サインイン済みの利用者がサインインの経路を開くと�
 	await expect(page.getByRole('heading', { name: 'サインイン済み' })).toBeVisible();
 });
 
+test('パスワードの変更を終えた利用者が、行き止まりにならない — 要件 3.5', async ({ page }) => {
+	await signedInUser(page, 'password-change');
+
+	await page.goto('/password-change');
+	await page.getByLabel('現在のパスワード').fill(PASSWORD);
+	await page.getByLabel('新しいパスワード').fill('showcase-secret-next');
+	await page.getByRole('button', { name: '変更する' }).click();
+
+	await expect(page.getByText('パスワードを変更しました。')).toBeVisible();
+	// 押せる意味のない操作を残さない。変更したパスワードも画面に残さない
+	await expect(page.getByRole('button', { name: '変更する' })).not.toBeVisible();
+	await expect(page.getByLabel('現在のパスワード')).not.toBeVisible();
+
+	await page.getByRole('button', { name: '戻る' }).click();
+	await expect(page).toHaveURL('/');
+});
+
 test('サインインの失敗と、入力を保ったままの再入力 — 要件 3.2, 3.3（auth-store-and-screens）', async ({
 	page
 }) => {

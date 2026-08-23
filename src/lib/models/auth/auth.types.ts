@@ -181,6 +181,8 @@ export interface AuthMessages {
 	readonly passwordChangeSubmit: string;
 	readonly passwordChangeCancel: string;
 	readonly passwordChangeDone: string;
+	/** 変更を終えた利用者に示す、ただ1つの次の一手 */
+	readonly passwordChangeBack: string;
 
 	// パスワードの再設定
 	readonly passwordResetDescription: string;
