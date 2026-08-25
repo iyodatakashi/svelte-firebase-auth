@@ -2,10 +2,24 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolveAuthGuard } from '$lib/models/auth/authGuard';
-	import { clearReturnTo, readReturnTo, writeReturnTo } from '$lib/navigation/returnTo';
 	import type { AuthGateProps } from '$lib/models/auth/auth.types';
 
 	let { store, children, pending }: AuthGateProps = $props();
+
+	/**
+	 * サインインの後に戻る経路の保持。タブ単位で、再読み込みと経路の移動を跨いで保つ。
+	 * 保持するのは経路だけであり、認証の状態は持たない
+	 */
+	const RETURN_TO_KEY = 'svelte-firebase-auth:return-to';
+
+	/** 保持先が使えない環境でも機能を止めない。戻り先を持たない状態として振る舞う */
+	const withStorage = <T,>(use: (storage: Storage) => T): T | null => {
+		try {
+			return use(sessionStorage);
+		} catch {
+			return null;
+		}
+	};
 
 	/**
 	 * 実行中の振り替え先。**遷移は非同期であり、完了前に段階が変わると二重に走る**。
@@ -19,7 +33,7 @@
 			stage: store.stage,
 			currentPath: `${page.url.pathname}${page.url.search}`,
 			routes: store.routes,
-			returnTo: readReturnTo()
+			returnTo: withStorage((storage) => storage.getItem(RETURN_TO_KEY))
 		})
 	);
 
@@ -30,10 +44,12 @@
 			return;
 		}
 
-		if (decision.returnTo === null) {
-			clearReturnTo();
+		// 受け入れられる形かは判定が済ませている。ここは保持するだけ
+		const returnTo = decision.returnTo;
+		if (returnTo === null) {
+			withStorage((storage) => storage.removeItem(RETURN_TO_KEY));
 		} else {
-			writeReturnTo(decision.returnTo);
+			withStorage((storage) => storage.setItem(RETURN_TO_KEY, returnTo));
 		}
 
 		if (redirectingTo === decision.to) {

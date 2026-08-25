@@ -43,7 +43,7 @@
 
 - `@sveltejs/kit`（peer, P0）— `$app/navigation` の `goto`、`$app/state` の `page`
 - `svelte`（peer, P0）、`firebase`（peer, P0）、`@14ch/svelte-ui`（peer, P1）— 既存
-- 依存の向きは **models → navigation → components** および **models → stores → components** の一方向
+- 依存の向きは **models → stores → components** の一方向
 
 ### Revalidation Triggers
 
@@ -103,11 +103,11 @@ graph TB
 **Architecture Integration**:
 
 - **Selected pattern**: 判定（純関数）と効果（薄い包み）の分離。`page.url` がテスト環境で空になり `goto` が例外を投げるため、判定を効果から切り離さないと**分岐のどれも単体で試験できない**（→ `research.md`）
-- **Domain boundaries**: 判定は `models/` に置き、購読も遷移も持たない。`$app/*` を触るのは `navigation/` と `components/` だけ
+- **Domain boundaries**: 判定は `models/` に置き、購読も遷移も持たない。**`$app/*` とブラウザの保存領域に触るのは `components/` だけ**
 - **New components rationale**: `resolveAuthGuard`（判定の純関数）と `AuthGate`（到達の制御）の2つ。**遷移と描画は分けられない** — 遷移だけを止めても判定が済むまで中身が見えるため（要件 4-8）、両方を持つ1つの包みにする。遷移を専用モジュールへ集約する案は採らない — 経路はストアから読めるため、間接を足す動機が「テストの差し替え1行を省く」ことに帰着する（→ `research.md`）
 - **Steering compliance**: 例外を投げない／シングルトンにしない／独自のパレットを持たない。**`$app/*` を import しない規則は本 spec が置き換える**（要件 7-1）
 
-**依存の向き（違反は誤りとして扱う）**: `models` → `navigation` → `components`、`models` → `stores` → `components`。`models` はいずれの層も参照しない。**`resolveAuthGuard` は `$app/*` を参照しない。**
+**依存の向き（違反は誤りとして扱う）**: `models` → `stores` → `components`。`models` はいずれの層も参照しない。**`resolveAuthGuard` は `$app/*` も保存領域も参照しない。**
 
 ### Technology Stack
 
@@ -135,12 +135,11 @@ src/lib/
 │   ├── auth.ts                         # 変更なし
 │   └── authGuard.ts                    # resolveAuthGuard（純関数。$app/* を参照しない）
 ├── messages/                           # 変更なし
-├── navigation/
-│   ├── AuthGate.svelte                 # 到達の制御。goto と描画の抑止
-│   └── returnTo.ts                     # 戻り先の保持と検査
 ├── stores/
 │   └── auth.svelte.ts                  # routes を公開する（他は変更なし）
-└── components/                         # 5画面。コールバックを外し goto を呼ぶ
+└── components/
+    ├── AuthGate.svelte                 # 到達の制御。goto・描画の抑止・戻り先の保持
+    └── ...                             # 5画面。コールバックを外し goto を呼ぶ
 
 src/routes/                             # ショーケース。経路として組み直す
 ├── +layout.svelte                       # ストアの生成と start/stop、AuthGate で子を包む
@@ -153,7 +152,7 @@ src/routes/                             # ショーケース。経路として�
 
 src/tests/
 ├── models/auth/authGuard.test.ts       # 判定の網羅（新規）
-├── navigation/                          # 効果側は E2E に委ね、単体では持たない
+│                                        # 戻り先の受け入れの判定もここで網羅する
 └── components/*.svelte.spec.ts         # 検証の対象を「遷移の呼び出し」へ変える
 ```
 
@@ -226,41 +225,40 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement  | Summary                            | Components                       | Interfaces                              | Flows            |
-| ------------ | ---------------------------------- | -------------------------------- | --------------------------------------- | ---------------- |
-| 1.1          | peer 依存の宣言                    | PackagingAndShowcase             | `package.json`                          | —                |
-| 1.2          | 遷移を自身で行う                   | AuthGate, AuthComponents         | `AuthGate`, `goto`                      | 到達ガードの判定 |
-| 1.3          | 入口は1つ                          | PublicSurface                    | `index.ts`                              | —                |
-| 1.4          | 1箇所で有効にできる                | AuthGate                         | `AuthGate`                              | —                |
-| 1.5          | 型を併せて公開する                 | PublicSurface                    | `AuthRoutes`, `AuthGuardDecision`       | —                |
-| 2.1–2.2      | 経路の設定と単一の出所             | AuthStoreFactory                 | `AuthConfig.routes`, `AuthStore.routes` | —                |
-| 2.3          | 自由登録が無いとき登録へ遷移しない | SignIn                           | —                                       | —                |
-| 2.4          | 経路の欠落を型で示す               | AuthModels                       | `AuthRoutes`（必須の項目）              | —                |
-| 2.5          | 経路の一致の判定                   | AuthGuardResolver                | `resolveAuthGuard`                      | —                |
-| 3.1–3.6      | 画面が行う導線の遷移               | AuthComponents                   | `AuthStore.routes`                      | —                |
-| 3.7          | 遷移の要求を返さない／完了は返す   | AuthModels                       | `AuthBaseProps.onCompleted`             | —                |
-| 4.1–4.5      | 段階ごとの到達の許可と振り替え     | AuthGuardResolver                | `resolveAuthGuard`                      | 到達ガードの判定 |
-| 4.6          | 段階の変化に追随する               | AuthGate                         | `AuthGate`                              | —                |
-| 4.7          | ブラウザでのみ働く                 | AuthGate                         | —                                       | —                |
-| 4.8          | 判定が済むまで描画しない           | AuthGate                         | `AuthGateProps.pending`                 | —                |
-| 5.1–5.3, 5.6 | 戻り先の保持・復帰・破棄           | AuthGuardResolver, ReturnToStore | `resolveAuthGuard`, `readReturnTo`      | 元の経路へ戻る   |
-| 5.4          | 外部への誘導を防ぐ                 | ReturnToStore                    | `isSafeReturnTo`                        | —                |
-| 5.5          | 確認を跨いで失わない               | ReturnToStore                    | `sessionStorage`                        | 元の経路へ戻る   |
-| 6.1–6.5      | 手引きとショーケース               | PackagingAndShowcase             | README, `src/routes/`                   | —                |
-| 7.1–7.3      | 記録と組み込み側へ返す事項         | —                                | `tech.md`, `auth-store-and-screens`     | —                |
+| Requirement  | Summary                            | Components                  | Interfaces                              | Flows            |
+| ------------ | ---------------------------------- | --------------------------- | --------------------------------------- | ---------------- |
+| 1.1          | peer 依存の宣言                    | PackagingAndShowcase        | `package.json`                          | —                |
+| 1.2          | 遷移を自身で行う                   | AuthGate, AuthComponents    | `AuthGate`, `goto`                      | 到達ガードの判定 |
+| 1.3          | 入口は1つ                          | PublicSurface               | `index.ts`                              | —                |
+| 1.4          | 1箇所で有効にできる                | AuthGate                    | `AuthGate`                              | —                |
+| 1.5          | 型を併せて公開する                 | PublicSurface               | `AuthRoutes`, `AuthGuardDecision`       | —                |
+| 2.1–2.2      | 経路の設定と単一の出所             | AuthStoreFactory            | `AuthConfig.routes`, `AuthStore.routes` | —                |
+| 2.3          | 自由登録が無いとき登録へ遷移しない | SignIn                      | —                                       | —                |
+| 2.4          | 経路の欠落を型で示す               | AuthModels                  | `AuthRoutes`（必須の項目）              | —                |
+| 2.5          | 経路の一致の判定                   | AuthGuardResolver           | `resolveAuthGuard`                      | —                |
+| 3.1–3.6      | 画面が行う導線の遷移               | AuthComponents              | `AuthStore.routes`                      | —                |
+| 3.7          | 遷移の要求を返さない／完了は返す   | AuthModels                  | `AuthBaseProps.onCompleted`             | —                |
+| 4.1–4.5      | 段階ごとの到達の許可と振り替え     | AuthGuardResolver           | `resolveAuthGuard`                      | 到達ガードの判定 |
+| 4.6          | 段階の変化に追随する               | AuthGate                    | `AuthGate`                              | —                |
+| 4.7          | ブラウザでのみ働く                 | AuthGate                    | —                                       | —                |
+| 4.8          | 判定が済むまで描画しない           | AuthGate                    | `AuthGateProps.pending`                 | —                |
+| 5.1–5.3, 5.6 | 戻り先の保持・復帰・破棄           | AuthGuardResolver, AuthGate | `resolveAuthGuard`                      | 元の経路へ戻る   |
+| 5.4          | 外部への誘導を防ぐ                 | AuthGuardResolver           | `resolveAuthGuard`                      | —                |
+| 5.5          | 確認を跨いで失わない               | AuthGate                    | `sessionStorage`                        | 元の経路へ戻る   |
+| 6.1–6.5      | 手引きとショーケース               | PackagingAndShowcase        | README, `src/routes/`                   | —                |
+| 7.1–7.3      | 記録と組み込み側へ返す事項         | —                           | `tech.md`, `auth-store-and-screens`     | —                |
 
 ## Components and Interfaces
 
-| Component            | Domain/Layer   | Intent                                | Req Coverage            | Key Dependencies                                                 | Contracts      |
-| -------------------- | -------------- | ------------------------------------- | ----------------------- | ---------------------------------------------------------------- | -------------- |
-| AuthModels           | models         | 経路と判定の型                        | 1.5, 2.4, 3.7           | —                                                                | Service        |
-| AuthGuardResolver    | models         | 到達の判定（純関数）                  | 4.1–4.5, 5.1–5.3, 5.6   | AuthModels (P0)                                                  | Service        |
-| ReturnToStore        | navigation     | 戻り先の保持と検査                    | 5.1, 5.4, 5.5           | —                                                                | Service, State |
-| AuthGate             | navigation     | 到達の制御（遷移と描画）              | 1.2, 1.4, 4.6, 4.7, 4.8 | AuthGuardResolver (P0), ReturnToStore (P0), `@sveltejs/kit` (P0) | Service        |
-| AuthStoreFactory     | stores         | 経路の保持と公開                      | 2.1, 2.2                | AuthModels (P0)                                                  | State          |
-| AuthComponents       | components     | 導線の遷移                            | 2.3, 3.1–3.7            | AuthStoreFactory (P0), `@sveltejs/kit` (P0)                      | —              |
-| PublicSurface        | index          | 公開面                                | 1.3, 1.5                | すべて (P0)                                                      | —              |
-| PackagingAndShowcase | build / routes | peer 依存・README・経路のショーケース | 1.1, 6.1–6.5            | —                                                                | —              |
+| Component            | Domain/Layer   | Intent                                 | Req Coverage           | Key Dependencies                             | Contracts      |
+| -------------------- | -------------- | -------------------------------------- | ---------------------- | -------------------------------------------- | -------------- |
+| AuthModels           | models         | 経路と判定の型                         | 1.5, 2.4, 3.7          | —                                            | Service        |
+| AuthGuardResolver    | models         | 到達の判定（純関数）                   | 4.1–4.5, 5.1–5.3, 5.6  | AuthModels (P0)                              | Service        |
+| AuthGate             | components     | 到達の制御（遷移・描画・戻り先の保持） | 1.2, 1.4, 4.6–4.8, 5.5 | AuthGuardResolver (P0), `@sveltejs/kit` (P0) | Service, State |
+| AuthStoreFactory     | stores         | 経路の保持と公開                       | 2.1, 2.2               | AuthModels (P0)                              | State          |
+| AuthComponents       | components     | 導線の遷移                             | 2.3, 3.1–3.7           | AuthStoreFactory (P0), `@sveltejs/kit` (P0)  | —              |
+| PublicSurface        | index          | 公開面                                 | 1.3, 1.5               | すべて (P0)                                  | —              |
+| PackagingAndShowcase | build / routes | peer 依存・README・経路のショーケース  | 1.1, 6.1–6.5           | —                                            | —              |
 
 ### models
 
@@ -337,7 +335,8 @@ export interface AuthBaseProps {
 
 - **`$app/*` を参照しない。** 副作用を持たず、同じ入力に同じ判定を返す
 - **各段階は「その段階のための経路」を許す。** 振り替え先が振り替えの対象になる状態を作らない
-- 戻り先の保持と破棄を判定として返す（実際の保存は ReturnToStore が行う）
+- 戻り先の保持と破棄を判定として返す（実際の保存は `AuthGate` が行う）
+- **受け入れられない戻り先を、持っていないものとして扱う。** 受け入れるのは根からの相対の経路だけで、`//evil.example` と `/\evil.example` はブラウザが外部として解決するため弾く（要件 5-4）
 
 **Dependencies**
 
@@ -376,51 +375,34 @@ export declare function resolveAuthGuard(input: AuthGuardInput): AuthGuardDecisi
 **Implementation Notes**
 
 - Integration: 「認証の経路」は `signIn` / `signUp` / `verifyEmail` / `passwordReset` の4つ。**`afterSignIn` と、そこに含まれない経路（パスワードの変更など）は認証の経路ではない**
-- Validation: 段階4種 × 経路の種類 × 戻り先の有無を、`server` プロジェクトの単体テストで網羅する。**すべての `redirect` について、振り替え先で止まることを確かめる**。経路の一致は、問い合わせ文字列付き・末尾スラッシュ付き・前方一致になる紛らわしい経路（`/signin-help`）で確かめる
+- Validation: 段階4種 × 経路の種類 × 戻り先の有無を、`server` プロジェクトの単体テストで網羅する。**受け入れられない戻り先（`//evil`、`/\evil`、`https://evil`、空文字、`../`）が用いられも保持し直されもしないこと**も、ここで確かめる。**すべての `redirect` について、振り替え先で止まることを確かめる**。経路の一致は、問い合わせ文字列付き・末尾スラッシュ付き・前方一致になる紛らわしい経路（`/signin-help`）で確かめる
 - Risks: 段階が増えると網羅が漏れる。`AuthStage` は判別可能な共用体であり、`switch` の網羅性で検出できる
 
-### navigation
+### stores
 
-#### ReturnToStore
+#### AuthStoreFactory
 
-| Field        | Detail                                             |
-| ------------ | -------------------------------------------------- |
-| Intent       | 戻り先の保持・取り出し・破棄と、受け入れる値の検査 |
-| Requirements | 5.1, 5.4, 5.5                                      |
+| Field        | Detail                                                         |
+| ------------ | -------------------------------------------------------------- |
+| Intent       | 経路の保持と公開。他は `auth-store-and-screens` から変更しない |
+| Requirements | 2.1, 2.2                                                       |
 
 **Responsibilities & Constraints**
 
-- **受け入れるのは根からの相対パスだけ。** `/` で始まり、かつ `//` で始まらないもの
-- タブ単位で再読み込みを跨いで保持する
-- 保持先が使えない環境でも例外を投げず、戻り先を持たない状態として振る舞う
+- `AuthConfig.routes` を受け取り、`AuthStore.routes` として公開する
+- **経路の出所を1つにする。** 画面もガードもここから読む（要件 2-2）
 
-**Contracts**: Service [x] / State [x]
-
-##### Service Interface
-
-```typescript
-/** `/` で始まり `//` で始まらない経路だけを受け入れる */
-export declare function isSafeReturnTo(value: string): boolean;
-
-export declare function readReturnTo(): string | null;
-export declare function writeReturnTo(path: string): void;
-export declare function clearReturnTo(): void;
-```
-
-- **Postconditions**: `readReturnTo` は `isSafeReturnTo` を満たす値か `null` だけを返す
-- **Invariants**: 外部のオリジンを指す値を保持しない
+**Contracts**: State [x]
 
 ##### State Management
 
-- **状態モデル**: `sessionStorage` の単一のキー。認証の状態は持たず、戻り先の経路1つだけを持つ
-- **永続性**: タブ単位。再読み込みに耐え、タブを閉じれば消える
-- **並行性**: 単一の値の読み書きのみ
+- **状態モデル**: `routes` は設定から導く（状態を持たない）。`canSelfRegister` / `requiresEmailVerification` と同じ形
 
 **Implementation Notes**
 
-- Integration: `//evil.example/path` は `/` で始まるためプロトコル相対の URL として外部へ解決される。**この形を弾くことが検査の要点である**
-- Validation: 受け入れる値と弾く値を単体テストで確かめる（`/a`、`/a?b=1`、`//evil`、`https://evil`、空文字、`../`）
-- Risks: `sessionStorage` が使えない環境（設定で無効化された場合など）では、例外を握りつぶして機能を止めない
+- Integration: `AuthStore` に `readonly routes: AuthRoutes` を追加する。**他の振る舞いは変更しない**
+
+### components
 
 #### AuthGate
 
@@ -431,7 +413,8 @@ export declare function clearReturnTo(): void;
 
 **Responsibilities & Constraints**
 
-- **判定を持たない。** `resolveAuthGuard` の結果に従うだけ
+- **判定を持たない。** `resolveAuthGuard` の結果に従うだけ。**受け入れてよい戻り先かの判定も持たない**
+- **戻り先を `sessionStorage` の単一のキーへ保持する。** タブ単位で再読み込みと経路の移動を跨ぐ。保持先が使えない環境でも例外を投げず、戻り先を持たない状態として振る舞う
 - **遷移と描画を対で持つ。** 遷移だけを止めても、判定が済むまで保護された経路の中身が画面に出る（要件 4-8）
 - **組み込み側は根の `+layout.svelte` で子を包む**（要件 1-4）
 - `store.stage` と `page.url` の双方を読むため、**どちらが変わっても走る**（要件 4-6）
@@ -441,7 +424,7 @@ export declare function clearReturnTo(): void;
 **Dependencies**
 
 - External: `@sveltejs/kit` — `$app/navigation` の `goto`、`$app/state` の `page`（P0）
-- Outbound: AuthGuardResolver（P0）、ReturnToStore（P0）
+- Outbound: AuthGuardResolver（P0）
 
 **Contracts**: Service [x] / State [x]
 
@@ -474,33 +457,10 @@ export interface AuthGateProps {
 - Integration: 振り替えは `replaceState: true`。**利用者の操作による遷移（画面の導線）は通常どおり履歴へ積む**
 - Integration: 認証の経路（サインインなど）自体もこの包みの中に置かれる。`allow` と判定されるため描画される
 - Validation: **単体では試験しない**（ルーター無しでは `goto` が例外を投げ、`page.url` が空になる）。E2E で確かめる
+- Risks: 保持先の try/catch は単体では試験できない（ルーター無しでは `goto` が例外を投げる）。E2E が唯一の検証手段になる
 - Risks: 包み忘れるとガードが働かない。**画面の出し分けは体験のためであり、防御は組み込み側のアクセス制御が担う**ことを README に記す
 
-### stores
-
-#### AuthStoreFactory
-
-| Field        | Detail                                                         |
-| ------------ | -------------------------------------------------------------- |
-| Intent       | 経路の保持と公開。他は `auth-store-and-screens` から変更しない |
-| Requirements | 2.1, 2.2                                                       |
-
-**Responsibilities & Constraints**
-
-- `AuthConfig.routes` を受け取り、`AuthStore.routes` として公開する
-- **経路の出所を1つにする。** 画面もガードもここから読む（要件 2-2）
-
-**Contracts**: State [x]
-
-##### State Management
-
-- **状態モデル**: `routes` は設定から導く（状態を持たない）。`canSelfRegister` / `requiresEmailVerification` と同じ形
-
-**Implementation Notes**
-
-- Integration: `AuthStore` に `readonly routes: AuthRoutes` を追加する。**他の振る舞いは変更しない**
-
-### components
+#### 5画面
 
 5画面はいずれも `AuthBaseProps` だけを受け取る。導線の遷移は `goto(store.routes.x)` を呼ぶ。
 

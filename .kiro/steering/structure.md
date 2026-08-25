@@ -17,7 +17,7 @@
 ```typescript
 export { createAuthStore } from './stores/auth.svelte';
 export { normalizeEmail } from './models/auth/auth';
-export { default as AuthGate } from './navigation/AuthGate.svelte';
+export { default as AuthGate } from './components/AuthGate.svelte';
 export { default as SignIn } from './components/SignIn.svelte';
 export type {
 	AuthStore,
@@ -33,9 +33,11 @@ export type {
 
 ### components（`src/lib/components/`）
 
-**Purpose**: 画面の実体。マークアップと画面固有のロジック
-**Example**: `src/lib/components/SignIn.svelte`
+**Purpose**: 画面の実体と、画面を包む制御。マークアップとコンポーネント固有のロジック。**`$app/*` に触ってよいのはここだけ**
+**Example**: `src/lib/components/SignIn.svelte`、`src/lib/components/AuthGate.svelte`
 
+- **判定を持たない。** 到達の判定は `models/` の純関数が持ち、`AuthGate` はその結果に従うだけ。ルーターの無い環境では `goto` が例外を投げるため、分けないと単体で試験できない
+- **`AuthGate` は遷移と描画の抑止を対で持つ。** 遷移だけを止めても、判定が済むまで保護された経路の中身が画面に出る
 - **段階を変えない導線の遷移を自ら行う。** 行き先は `store.routes` から読む。**コールバックの props を持たない**
 - **完了時には遷移しない。** サインイン・登録・確認・サインアウトの完了は段階を変えるため、`AuthGate` が動かす。画面にも同じ判断を書くと、判定が2箇所に増える
 - **状態は store から受け取る。** 画面が `Auth` を直接呼ばない
@@ -46,14 +48,7 @@ export type {
 **Example**: `src/lib/stores/auth.svelte.ts`（`createAuthStore` ファクトリ）
 
 - **シングルトンにしない。** 組み込み側が `Auth` と設定を渡して生成する。ライブラリがグローバルな状態を持つと、テストと複数インスタンスで破綻する
-
-### navigation（`src/lib/navigation/`）
-
-**Purpose**: 到達の制御と、戻り先の保持。**`$app/*` に触ってよいのはここと `components/` だけ**
-**Example**: `src/lib/navigation/AuthGate.svelte`、`src/lib/navigation/returnTo.ts`
-
-- **判定を持たない。** 到達の判定は `models/` の純関数が持ち、ここはその結果に従うだけ。ルーターの無い環境では `goto` が例外を投げるため、分けないと単体で試験できない
-- **遷移と描画の抑止を対で持つ。** 遷移だけを止めても、判定が済むまで保護された経路の中身が画面に出る
+- **`$app/*` を参照しない。**
 
 ### models（`src/lib/models/<domain>/`）
 
@@ -84,7 +79,7 @@ export type {
 - **Svelte コンポーネント**: PascalCase（`SignIn.svelte`）
 - **TypeScript ファイル**: kebab-case。ただし store と models 配下は camelCase + 用途サフィックス（`auth.svelte.ts` / `auth.types.ts`）
 - **型**: PascalCase（`AuthStore`, `AuthErrorKind`）
-- **コンポーネント名に `Screen` のような種別のサフィックスを付けない。** このパッケージが component として出すものは全部が画面であり、名前で言い直しても情報が増えない。出自は import 文が示す（組み込み側は自分の画面を `*Page` などで名付けている）
+- **コンポーネント名に `Screen` のような種別のサフィックスを付けない。** 画面として出すものは名前で言い直しても情報が増えない。出自は import 文が示す（組み込み側は自分の画面を `*Page` などで名付けている）
 - **画面の props の型は `AuthBaseProps` に一本化する。** 画面ごとの差分が無いため、`<コンポーネント名>Props` を作らない。画面以外のコンポーネントの props は `<コンポーネント名>Props`（`AuthGateProps`）
 
 ## 型定義の規約（重要）
@@ -114,7 +109,8 @@ import AuthField from './AuthField.svelte';
 **Path Aliases**: `$lib/` → `src/lib/`（SvelteKit 標準）
 
 - **`src/lib` から `src/routes` を import しない。** 逆向きの依存であり、配布物がショーケースに依存する
-- **`$app/*` を import してよいのは `navigation/` と `components/` だけ。** `models/` は参照しない（→ `tech.md`「SvelteKit を前提とする」）
+- **`$app/*` を import してよいのは `components/` だけ。** `models/` と `stores/` は参照しない（→ `tech.md`「SvelteKit を前提とする」）
+- **ブラウザの保存領域（`sessionStorage` など）に触るのも `components/` だけ。** 効果を持つものを、判定と状態の層へ入れない
 
 ## CSS / スタイル記法
 

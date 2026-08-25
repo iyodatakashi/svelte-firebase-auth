@@ -112,6 +112,45 @@ describe('条件を満たした利用者 — 要件 4.4, 4.5, 5.2, 5.3', () => {
 	});
 });
 
+describe('受け入れられない戻り先 — 要件 5.4', () => {
+	/** 外部として解決される値・経路として解釈できない値 */
+	const unsafe = [
+		'//evil.example/path',
+		'/\\evil.example/path',
+		'https://evil.example/path',
+		'',
+		'../documents/42'
+	];
+
+	it('保持されていても用いず、既定の行き先へ振り替える', () => {
+		for (const held of unsafe) {
+			expect(resolve('ready', '/signin', held)).toEqual({
+				kind: 'redirect',
+				to: '/',
+				returnTo: null
+			});
+		}
+	});
+
+	it('保持し直さない', () => {
+		for (const held of unsafe) {
+			expect(resolve('email-unverified', '/documents/42', held)).toEqual({
+				kind: 'redirect',
+				to: '/verify-email',
+				returnTo: null
+			});
+		}
+	});
+
+	it('根からの相対の経路は受け入れる', () => {
+		expect(resolve('ready', '/signin', '/documents/42?tab=history')).toEqual({
+			kind: 'redirect',
+			to: '/documents/42?tab=history',
+			returnTo: null
+		});
+	});
+});
+
 describe('振り替えが止まること — 要件 4.2, 4.3, 4.4', () => {
 	const stages: AuthStage[] = ['unresolved', 'signed-out', 'email-unverified', 'ready'];
 	const paths = [

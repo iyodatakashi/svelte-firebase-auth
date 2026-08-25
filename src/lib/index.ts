@@ -5,7 +5,7 @@ export { normalizeEmail } from './models/auth/auth';
 export { jaMessages, resolveMessages } from './messages/ja';
 export { authErrorMessageOf } from './messages/authErrorMessage';
 
-export { default as AuthGate } from './navigation/AuthGate.svelte';
+export { default as AuthGate } from './components/AuthGate.svelte';
 
 export { default as SignIn } from './components/SignIn.svelte';
 export { default as SignUp } from './components/SignUp.svelte';

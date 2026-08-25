@@ -45,11 +45,9 @@ describe('公開面 — 要件 1.3, 1.5', () => {
 		}
 	});
 
-	it('判定の純関数と戻り先の保持は公開しない。到達の制御の内部実装であるため', () => {
+	it('判定の純関数は公開しない。到達の制御の内部実装であるため', () => {
 		expect(surface).not.toHaveProperty('resolveAuthGuard');
-		expect(surface).not.toHaveProperty('readReturnTo');
-		expect(surface).not.toHaveProperty('writeReturnTo');
-		expect(surface).not.toHaveProperty('isSafeReturnTo');
+		expect(surface).not.toHaveProperty('matchesRoute');
 	});
 
 	it('公開する値に対応する型を、公開面から書ける', () => {
