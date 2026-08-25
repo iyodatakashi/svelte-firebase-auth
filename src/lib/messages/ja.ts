@@ -38,7 +38,7 @@ export const jaMessages: AuthMessages = {
 	verifyEmailSignOut: 'サインアウト',
 
 	passwordChangeSubmit: '変更する',
-	passwordChangeCancel: '取りやめる',
+	passwordChangeCancel: 'キャンセル',
 	passwordChangeDone: 'パスワードを変更しました。',
 	passwordChangeBack: '戻る',
 
