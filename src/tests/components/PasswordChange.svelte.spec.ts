@@ -85,6 +85,17 @@ describe('PasswordChange — 要件 3.5', () => {
 	});
 });
 
+describe('PasswordChange の操作の並び', () => {
+	it('取りやめが左、実行が右に並ぶ', async () => {
+		const { screen } = await setup();
+		const labels = [...screen.container.querySelectorAll('.password-change__actions button')].map(
+			(button) => button.textContent?.trim()
+		);
+
+		expect(labels).toEqual([jaMessages.passwordChangeCancel, jaMessages.passwordChangeSubmit]);
+	});
+});
+
 describe('PasswordChange の導線 — 要件 3.5', () => {
 	it('取りやめが、既定の行き先へ遷移する', async () => {
 		const { screen } = await setup();

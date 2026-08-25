@@ -89,12 +89,13 @@
 				<p class="password-change__error" role="alert">{errorMessage}</p>
 			{/if}
 
+			<!-- 取りやめが左、実行が右。描画の順と見た目の順を一致させ、読み上げと Tab の順も揃える -->
 			<div class="password-change__actions">
-				<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
-					{messages.passwordChangeSubmit}
-				</Button>
 				<Button onclick={() => goto(store.routes.afterSignIn)} disabled={isSubmitting}>
 					{messages.passwordChangeCancel}
+				</Button>
+				<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
+					{messages.passwordChangeSubmit}
 				</Button>
 			</div>
 		</form>
