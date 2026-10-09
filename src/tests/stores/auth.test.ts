@@ -14,10 +14,19 @@ vi.mock('firebase/auth', () => firebaseAuthMock);
 
 const { createAuthStore } = await import('$lib/stores/auth.svelte');
 
+const routes = {
+	signIn: '/signin',
+	signUp: '/signup',
+	verifyEmail: '/verify-email',
+	passwordReset: '/password-reset',
+	afterSignIn: '/'
+};
+
 const config = {
 	selfRegistration: true,
 	emailVerification: true,
-	continueUrl: 'https://example.com/after'
+	continueUrl: 'https://example.com/after',
+	routes
 };
 
 /** メールアドレスの確認を求めない組み込み先 */
@@ -36,6 +45,13 @@ describe('createAuthStore — 要件 1.1, 1.10', () => {
 		const second = createAuthStore(fakeAuth(), { ...config, selfRegistration: false });
 		expect(first.canSelfRegister).toBe(true);
 		expect(second.canSelfRegister).toBe(false);
+	});
+});
+
+describe('経路の公開 — 要件 2.1, 2.2', () => {
+	it('設定された経路を、画面とガードが読む唯一の出所として公開する', () => {
+		const store = createAuthStore(fakeAuth(), config);
+		expect(store.routes).toEqual(routes);
 	});
 });
 

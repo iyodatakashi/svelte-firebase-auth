@@ -1,17 +1,11 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { AuthError, SignUpProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps, AuthError } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onSignedUp,
-		onRequestSignIn,
-		onRequestPasswordReset
-	}: SignUpProps = $props();
+	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -36,7 +30,8 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			onSignedUp();
+			// 遷移しない。段階が変わるため、到達の制御が動かす
+			onCompleted?.();
 			return;
 		}
 		failure = result.error;
@@ -44,12 +39,6 @@
 </script>
 
 <section class="sign-up">
-	{#if header}
-		<div class="sign-up__header">{@render header()}</div>
-	{/if}
-
-	<h2 class="sign-up__title">{messages.signUpTitle}</h2>
-
 	<form class="sign-up__form" onsubmit={submit} novalidate>
 		<div class="sign-up__field">
 			<label class="sign-up__label" for="sign-up-email">{messages.emailLabel}</label>
@@ -87,11 +76,11 @@
 
 	<div class="sign-up__links">
 		{#if canOfferPasswordReset}
-			<Button onclick={onRequestPasswordReset} disabled={isSubmitting}>
+			<Button onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
 				{messages.signUpToPasswordReset}
 			</Button>
 		{/if}
-		<Button onclick={onRequestSignIn} disabled={isSubmitting}>
+		<Button onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
 			{messages.signUpToSignIn}
 		</Button>
 	</div>
@@ -103,11 +92,6 @@
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
-	}
-
-	.sign-up__title {
-		margin: 0;
-		font-size: var(--svelte-ui-font-size-xl);
 	}
 
 	.sign-up__form {

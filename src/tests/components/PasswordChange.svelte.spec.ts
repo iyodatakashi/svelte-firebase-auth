@@ -1,15 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { goto } from '$app/navigation';
 import PasswordChange from '$lib/components/PasswordChange.svelte';
 import { jaMessages } from '$lib/messages/ja';
-import { failureOf, fakeStore } from '../support/fakeStore.svelte';
+import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
 
-const setup = async () => {
+const setup = async (onCompleted?: () => void) => {
 	const { store } = fakeStore();
-	const onChanged = vi.fn();
-	const onCancel = vi.fn();
-	const screen = await render(PasswordChange, { props: { store, onChanged, onCancel } });
-	return { screen, store, onChanged, onCancel };
+	const screen = await render(PasswordChange, { props: { store, onCompleted } });
+	return { screen, store };
 };
 
 const fillAndSubmit = async (
@@ -22,23 +21,91 @@ const fillAndSubmit = async (
 	await screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }).click();
 };
 
-describe('PasswordChange — 要件 6.5', () => {
+describe('PasswordChange — 要件 3.5', () => {
 	it('現在のパスワードと新しいパスワードを受け取り、変更を実行する', async () => {
-		const { screen, store, onChanged } = await setup();
+		const { screen, store } = await setup();
 		await fillAndSubmit(screen);
 
-		await vi.waitFor(() => expect(onChanged).toHaveBeenCalledOnce());
-		expect(store.changePassword).toHaveBeenCalledWith('current', 'next-secret');
+		await vi.waitFor(() =>
+			expect(store.changePassword).toHaveBeenCalledWith('current', 'next-secret')
+		);
 	});
 
-	it('完了したことを利用者に示す', async () => {
+	it('完了時には自ら遷移せず、完了したことを利用者に示す', async () => {
 		const { screen } = await setup();
 		await fillAndSubmit(screen);
+
 		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).toBeInTheDocument();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('完了したら、もう押せる意味のない操作と、入力した内容を残さない', async () => {
+		const { screen } = await setup();
+		await fillAndSubmit(screen);
+
+		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.passwordChangeCancel }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByLabelText(jaMessages.currentPasswordLabel))
+			.not.toBeInTheDocument();
+	});
+
+	it('完了を組み込み側へ返す', async () => {
+		const onCompleted = vi.fn();
+		const { screen } = await setup(onCompleted);
+		await fillAndSubmit(screen);
+
+		await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledOnce());
+	});
+
+	it('失敗したときは完了を返さない', async () => {
+		const onCompleted = vi.fn();
+		const { screen, store } = await setup(onCompleted);
+		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
+		await fillAndSubmit(screen, 'wrong');
+
+		await expect
+			.element(screen.getByText(jaMessages.errorCurrentPasswordInvalid))
+			.toBeInTheDocument();
+		expect(onCompleted).not.toHaveBeenCalled();
+	});
+
+	it('完了したら、次の一手を1つだけ示し、それが既定の行き先へ遷移する', async () => {
+		const { screen } = await setup();
+		await fillAndSubmit(screen);
+
+		await screen.getByRole('button', { name: jaMessages.passwordChangeBack }).click();
+
+		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.afterSignIn);
 	});
 });
 
-describe('PasswordChange の失敗 — 要件 6.2, 6.3', () => {
+describe('PasswordChange の操作の並び', () => {
+	it('取りやめが左、実行が右に並ぶ', async () => {
+		const { screen } = await setup();
+		const labels = [...screen.container.querySelectorAll('.password-change__actions button')].map(
+			(button) => button.textContent?.trim()
+		);
+
+		expect(labels).toEqual([jaMessages.passwordChangeCancel, jaMessages.passwordChangeSubmit]);
+	});
+});
+
+describe('PasswordChange の導線 — 要件 3.5', () => {
+	it('取りやめが、既定の行き先へ遷移する', async () => {
+		const { screen } = await setup();
+		await screen.getByRole('button', { name: jaMessages.passwordChangeCancel }).click();
+
+		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.afterSignIn);
+	});
+});
+
+describe('PasswordChange の失敗 — 要件 6.2, 6.3（auth-store-and-screens）', () => {
 	it('現在のパスワードが誤っていれば、専用の案内を示す', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
@@ -52,15 +119,14 @@ describe('PasswordChange の失敗 — 要件 6.2, 6.3', () => {
 			.not.toBeInTheDocument();
 	});
 
-	it('現在のパスワードが誤っていれば、完了を通知しない', async () => {
-		const { screen, store, onChanged } = await setup();
+	it('現在のパスワードが誤っていれば、完了として示さない', async () => {
+		const { screen, store } = await setup();
 		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
 		await fillAndSubmit(screen, 'wrong');
 
 		await expect
 			.element(screen.getByText(jaMessages.errorCurrentPasswordInvalid))
 			.toBeInTheDocument();
-		expect(onChanged).not.toHaveBeenCalled();
 		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).not.toBeInTheDocument();
 	});
 
@@ -91,13 +157,5 @@ describe('PasswordChange の失敗 — 要件 6.2, 6.3', () => {
 		await expect
 			.element(screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }))
 			.toBeDisabled();
-	});
-});
-
-describe('PasswordChange の導線 — 要件 6.8', () => {
-	it('変更を取りやめる手段を提供し、その要求を通知する', async () => {
-		const { screen, onCancel } = await setup();
-		await screen.getByRole('button', { name: jaMessages.passwordChangeCancel }).click();
-		expect(onCancel).toHaveBeenCalledOnce();
 	});
 });

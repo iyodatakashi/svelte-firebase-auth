@@ -1,16 +1,11 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { PasswordResetProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onRequested,
-		onRequestSignIn
-	}: PasswordResetProps = $props();
+	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -35,8 +30,9 @@
 		isSubmitting = false;
 
 		if (result.ok) {
+			// 段階は変わらない。送ったことを示し、その先は組み込み側が決める
 			hasRequested = true;
-			onRequested();
+			onCompleted?.();
 			return;
 		}
 		errorMessage = authErrorMessageOf(result.error, messages, 'password-reset');
@@ -45,11 +41,6 @@
 </script>
 
 <section class="password-reset">
-	{#if header}
-		<div class="password-reset__header">{@render header()}</div>
-	{/if}
-
-	<h2 class="password-reset__title">{messages.passwordResetTitle}</h2>
 	<p class="password-reset__description">{messages.passwordResetDescription}</p>
 
 	<form class="password-reset__form" onsubmit={submit} novalidate>
@@ -87,7 +78,7 @@
 	</form>
 
 	<div class="password-reset__links">
-		<Button onclick={onRequestSignIn} disabled={isSubmitting}>
+		<Button onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
 			{messages.passwordResetToSignIn}
 		</Button>
 	</div>
@@ -101,15 +92,8 @@
 		color: var(--svelte-ui-text-color);
 	}
 
-	.password-reset__title {
-		margin: 0;
-		font-size: var(--svelte-ui-font-size-xl);
-	}
-
 	.password-reset__description {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
 	}
 
 	.password-reset__form {
@@ -137,8 +121,6 @@
 
 	.password-reset__spam {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
 	}
 
 	.password-reset__error {

@@ -211,6 +211,9 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		get requiresEmailVerification() {
 			return config.emailVerification;
 		},
+		get routes() {
+			return config.routes;
+		},
 		get stage() {
 			if (!isResolved) {
 				return 'unresolved';

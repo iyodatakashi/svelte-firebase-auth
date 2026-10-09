@@ -21,17 +21,14 @@ export const jaMessages: AuthMessages = {
 	currentPasswordLabel: '現在のパスワード',
 	newPasswordLabel: '新しいパスワード',
 
-	signInTitle: 'サインイン',
 	signInSubmit: 'サインイン',
 	signInToPasswordReset: 'パスワードをお忘れですか',
 	signInToSignUp: 'アカウントを作成する',
 
-	signUpTitle: 'アカウントの作成',
 	signUpSubmit: '登録する',
 	signUpToSignIn: 'サインインへ戻る',
 	signUpToPasswordReset: 'パスワードを再設定する',
 
-	verifyEmailTitle: 'メールアドレスの確認',
 	verifyEmailSentTo: (email) =>
 		`${email} 宛に確認メールを送りました。メールのリンクを開いてください。`,
 	verifyEmailCheckSpam: 'メールが見つからないときは、迷惑メールフォルダもご確認ください。',
@@ -40,12 +37,11 @@ export const jaMessages: AuthMessages = {
 	verifyEmailUseAnotherAddress: '別のメールアドレスで登録し直す',
 	verifyEmailSignOut: 'サインアウト',
 
-	passwordChangeTitle: 'パスワードの変更',
 	passwordChangeSubmit: '変更する',
-	passwordChangeCancel: '取りやめる',
+	passwordChangeCancel: 'キャンセル',
 	passwordChangeDone: 'パスワードを変更しました。',
+	passwordChangeBack: '戻る',
 
-	passwordResetTitle: 'パスワードの再設定',
 	passwordResetDescription:
 		'登録したメールアドレスを入力してください。再設定用のリンクをお送りします。',
 	passwordResetSubmit: '再設定用のメールを送る',

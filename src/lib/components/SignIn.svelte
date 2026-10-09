@@ -1,17 +1,11 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
+	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/ja';
-	import type { SignInProps } from '$lib/models/auth/auth.types';
+	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
-	let {
-		store,
-		messages: overrides,
-		header,
-		onSignedIn,
-		onRequestPasswordReset,
-		onRequestSignUp
-	}: SignInProps = $props();
+	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -32,7 +26,8 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			onSignedIn();
+			// 遷移しない。段階が変わるため、到達の制御が動かす
+			onCompleted?.();
 			return;
 		}
 		// 語彙ごとの分岐も文言もこの画面は持たない
@@ -41,12 +36,6 @@
 </script>
 
 <section class="sign-in">
-	{#if header}
-		<div class="sign-in__header">{@render header()}</div>
-	{/if}
-
-	<h2 class="sign-in__title">{messages.signInTitle}</h2>
-
 	<form class="sign-in__form" onsubmit={submit} novalidate>
 		<div class="sign-in__field">
 			<label class="sign-in__label" for="sign-in-email">{messages.emailLabel}</label>
@@ -83,11 +72,11 @@
 	</form>
 
 	<div class="sign-in__links">
-		<Button onclick={onRequestPasswordReset} disabled={isSubmitting}>
+		<Button onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
 			{messages.signInToPasswordReset}
 		</Button>
-		{#if store.canSelfRegister && onRequestSignUp}
-			<Button onclick={onRequestSignUp} disabled={isSubmitting}>
+		{#if store.canSelfRegister}
+			<Button onclick={() => goto(store.routes.signUp)} disabled={isSubmitting}>
 				{messages.signInToSignUp}
 			</Button>
 		{/if}
@@ -100,11 +89,6 @@
 		flex-direction: column;
 		gap: 1.5rem;
 		color: var(--svelte-ui-text-color);
-	}
-
-	.sign-in__title {
-		margin: 0;
-		font-size: var(--svelte-ui-font-size-xl);
 	}
 
 	.sign-in__form {

@@ -34,8 +34,10 @@ export default defineConfig(
 		}
 	},
 	{
-		// Override or add rule settings here, such as:
-		// 'svelte/button-has-type': 'error'
-		rules: {}
+		// 経路は組み込み側の設定として受け取る文字列であり、アプリのルート ID として解決できない。
+		// **URL に現れるとおりの pathname を受け取る**前提であり（base を使う組み込み先は base を
+		// 含めて渡す）、到達の判定も `page.url.pathname` とそのまま突き合わせる（→ README）
+		files: ['src/lib/**/*.svelte'],
+		rules: { 'svelte/no-navigation-without-resolve': 'off' }
 	}
 );
