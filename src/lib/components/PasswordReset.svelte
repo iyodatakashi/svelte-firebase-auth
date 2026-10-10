@@ -44,23 +44,20 @@
 	<p class="password-reset__description">{messages.passwordResetDescription}</p>
 
 	<form class="password-reset__form" onsubmit={submit} novalidate>
-		<div class="password-reset__field">
-			<label class="password-reset__label" for="password-reset-email">
-				{messages.emailLabel}
-			</label>
-			<Input
-				id="password-reset-email"
-				type="email"
-				autocomplete="email"
-				fullWidth
-				bind:value={email}
-				disabled={isSubmitting}
-			/>
-		</div>
+		<Input
+			id="password-reset-email"
+			type="email"
+			autocomplete="email"
+			placeholder={messages.email}
+			ariaLabel={messages.email}
+			fullWidth
+			bind:value={email}
+			disabled={isSubmitting}
+		/>
 
 		{#if hasRequested}
 			<p class="password-reset__notice" role="status">{messages.passwordResetSent}</p>
-			<p class="password-reset__spam">{messages.passwordResetCheckSpam}</p>
+			<p class="password-reset__spam">{messages.checkSpam}</p>
 		{/if}
 		{#if errorMessage}
 			<p class="password-reset__error" role="alert">{errorMessage}</p>
@@ -78,8 +75,8 @@
 	</form>
 
 	<div class="password-reset__links">
-		<Button onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
-			{messages.passwordResetToSignIn}
+		<Button fullWidth onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
+			{messages.backToSignIn}
 		</Button>
 	</div>
 </section>
@@ -88,7 +85,7 @@
 	.password-reset {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 32px;
 		color: var(--svelte-ui-text-color);
 	}
 
@@ -99,18 +96,7 @@
 	.password-reset__form {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.password-reset__field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.password-reset__label {
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
+		gap: 16px;
 	}
 
 	.password-reset__notice {
@@ -131,6 +117,6 @@
 
 	.password-reset__links {
 		display: flex;
-		gap: 0.5rem;
+		gap: 8px;
 	}
 </style>

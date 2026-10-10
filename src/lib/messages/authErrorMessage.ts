@@ -13,7 +13,7 @@ export const authErrorMessageOf = (
 		return messages.weakPasswordReason(error.unmetPasswordRequirements);
 	}
 	if (error.kind === 'invalid-credential' && context === 'password-change') {
-		return messages.errorCurrentPasswordInvalid;
+		return messages.currentPasswordInvalid;
 	}
 	return messages.errors[error.kind];
 };

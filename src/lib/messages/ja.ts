@@ -16,38 +16,37 @@ const REQUIREMENT_TEXTS: Readonly<Record<PasswordRequirement, string>> = {
 
 /** 既定の日本語 */
 export const jaMessages: AuthMessages = {
-	emailLabel: 'メールアドレス',
-	passwordLabel: 'パスワード',
-	currentPasswordLabel: '現在のパスワード',
-	newPasswordLabel: '新しいパスワード',
+	email: 'メールアドレス',
+	password: 'パスワード',
+	currentPassword: '現在のパスワード',
+	newPassword: '新しいパスワード',
 
 	signInSubmit: 'サインイン',
-	signInToPasswordReset: 'パスワードをお忘れですか',
-	signInToSignUp: 'アカウントを作成する',
-
 	signUpSubmit: '登録する',
-	signUpToSignIn: 'サインインへ戻る',
-	signUpToPasswordReset: 'パスワードを再設定する',
+	passwordChangeSubmit: '変更する',
+	passwordResetSubmit: '再設定用のメールを送る',
+
+	goToSignUp: 'サインアップ',
+	goToPasswordReset: 'パスワードを忘れた方',
+	goToSignUpWithAnotherEmail: '別のメールアドレスで登録し直す',
+	backToSignIn: 'サインインへ戻る',
+	back: '戻る',
+
+	signOut: 'サインアウト',
+	cancel: 'キャンセル',
 
 	verifyEmailSentTo: (email) =>
 		`${email} 宛に確認メールを送りました。メールのリンクを開いてください。`,
-	verifyEmailCheckSpam: 'メールが見つからないときは、迷惑メールフォルダもご確認ください。',
 	verifyEmailResend: '確認メールを再送する',
 	verifyEmailResent: '確認メールを再送しました。',
-	verifyEmailUseAnotherAddress: '別のメールアドレスで登録し直す',
-	verifyEmailSignOut: 'サインアウト',
 
-	passwordChangeSubmit: '変更する',
-	passwordChangeCancel: 'キャンセル',
 	passwordChangeDone: 'パスワードを変更しました。',
-	passwordChangeBack: '戻る',
 
 	passwordResetDescription:
 		'登録したメールアドレスを入力してください。再設定用のリンクをお送りします。',
-	passwordResetSubmit: '再設定用のメールを送る',
 	passwordResetSent: '入力されたメールアドレス宛に、再設定用のメールを送りました。',
-	passwordResetCheckSpam: 'メールが見つからないときは、迷惑メールフォルダもご確認ください。',
-	passwordResetToSignIn: 'サインインへ戻る',
+
+	checkSpam: 'メールが見つからないときは、迷惑メールフォルダもご確認ください。',
 
 	errors: {
 		'invalid-credential': 'メールアドレスまたはパスワードが違います。',
@@ -62,7 +61,7 @@ export const jaMessages: AuthMessages = {
 		'network-error': '通信に失敗しました。接続を確かめてお試しください。',
 		unknown: '処理に失敗しました。時間を空けてお試しください。'
 	},
-	errorCurrentPasswordInvalid: '現在のパスワードが違います。',
+	currentPasswordInvalid: '現在のパスワードが違います。',
 	weakPasswordReason: (requirements) =>
 		requirements.length === 0
 			? jaMessages.errors['weak-password']

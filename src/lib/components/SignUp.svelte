@@ -40,30 +40,28 @@
 
 <section class="sign-up">
 	<form class="sign-up__form" onsubmit={submit} novalidate>
-		<div class="sign-up__field">
-			<label class="sign-up__label" for="sign-up-email">{messages.emailLabel}</label>
-			<Input
-				id="sign-up-email"
-				type="email"
-				autocomplete="email"
-				fullWidth
-				bind:value={email}
-				disabled={isSubmitting}
-			/>
-		</div>
+		<Input
+			id="sign-up-email"
+			type="email"
+			autocomplete="email"
+			placeholder={messages.email}
+			ariaLabel={messages.email}
+			fullWidth
+			bind:value={email}
+			disabled={isSubmitting}
+		/>
 
-		<div class="sign-up__field">
-			<label class="sign-up__label" for="sign-up-password">{messages.passwordLabel}</label>
-			<Input
-				id="sign-up-password"
-				type="password"
-				autocomplete="new-password"
-				enablePasswordVisibilityToggle
-				fullWidth
-				bind:value={password}
-				disabled={isSubmitting}
-			/>
-		</div>
+		<Input
+			id="sign-up-password"
+			type="password"
+			autocomplete="new-password"
+			placeholder={messages.password}
+			ariaLabel={messages.password}
+			enablePasswordVisibilityToggle
+			fullWidth
+			bind:value={password}
+			disabled={isSubmitting}
+		/>
 
 		{#if errorMessage}
 			<p class="sign-up__error" role="alert">{errorMessage}</p>
@@ -77,11 +75,11 @@
 	<div class="sign-up__links">
 		{#if canOfferPasswordReset}
 			<Button onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
-				{messages.signUpToPasswordReset}
+				{messages.goToPasswordReset}
 			</Button>
 		{/if}
-		<Button onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
-			{messages.signUpToSignIn}
+		<Button fullWidth onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
+			{messages.backToSignIn}
 		</Button>
 	</div>
 </section>
@@ -90,25 +88,14 @@
 	.sign-up {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 32px;
 		color: var(--svelte-ui-text-color);
 	}
 
 	.sign-up__form {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.sign-up__field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.sign-up__label {
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
+		gap: 16px;
 	}
 
 	.sign-up__error {
@@ -120,6 +107,6 @@
 	.sign-up__links {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 8px;
 	}
 </style>

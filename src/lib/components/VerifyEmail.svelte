@@ -90,7 +90,7 @@
 	{#if store.email}
 		<p class="verify-email__sent-to">{messages.verifyEmailSentTo(store.email)}</p>
 	{/if}
-	<p class="verify-email__spam">{messages.verifyEmailCheckSpam}</p>
+	<p class="verify-email__spam">{messages.checkSpam}</p>
 
 	{#if hasResent}
 		<p class="verify-email__notice" role="status">{messages.verifyEmailResent}</p>
@@ -109,10 +109,10 @@
 			{messages.verifyEmailResend}
 		</Button>
 		<Button onclick={signUpWithAnotherEmail} disabled={isLeaving}>
-			{messages.verifyEmailUseAnotherAddress}
+			{messages.goToSignUpWithAnotherEmail}
 		</Button>
 		<Button onclick={signOut} disabled={isLeaving}>
-			{messages.verifyEmailSignOut}
+			{messages.signOut}
 		</Button>
 	</div>
 </section>
@@ -121,7 +121,7 @@
 	.verify-email {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 16px;
 		color: var(--svelte-ui-text-color);
 	}
 
@@ -145,6 +145,6 @@
 	.verify-email__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 8px;
 	}
 </style>

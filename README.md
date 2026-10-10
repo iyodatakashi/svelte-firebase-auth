@@ -259,6 +259,19 @@ if (!result.ok) {
 />
 ```
 
+文言のキーは、次の法則で付いている。
+
+| 種類           | 形              | 例                                         |
+| -------------- | --------------- | ------------------------------------------ |
+| 入力欄         | 項目名          | `email` / `currentPassword`                |
+| 送信           | `<画面>Submit`  | `signInSubmit` / `passwordResetSubmit`     |
+| 移動           | `goTo<画面>`    | `goToSignUp` / `goToPasswordReset`         |
+| 戻る移動       | `backTo<画面>`  | `backToSignIn`                             |
+| そのほかの操作 | 動詞            | `signOut` / `cancel` / `back`              |
+| 提示           | `<画面>` + 状態 | `passwordChangeDone` / `passwordResetSent` |
+
+**移動は行き先の画面だけを名にし、出発した画面は名に持たない。** 同じ行き先への導線は、どの画面から出ていても同じ項目を差し替える。
+
 ### 題字と名乗り
 
 **各画面は題字（見出し）を持たない。** ページの要素は、画面を置く側が決める。

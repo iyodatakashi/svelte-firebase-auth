@@ -37,30 +37,28 @@
 
 <section class="sign-in">
 	<form class="sign-in__form" onsubmit={submit} novalidate>
-		<div class="sign-in__field">
-			<label class="sign-in__label" for="sign-in-email">{messages.emailLabel}</label>
-			<Input
-				id="sign-in-email"
-				type="email"
-				autocomplete="email"
-				fullWidth
-				bind:value={email}
-				disabled={isSubmitting}
-			/>
-		</div>
+		<Input
+			id="sign-in-email"
+			type="email"
+			autocomplete="email"
+			placeholder={messages.email}
+			ariaLabel={messages.email}
+			fullWidth
+			bind:value={email}
+			disabled={isSubmitting}
+		/>
 
-		<div class="sign-in__field">
-			<label class="sign-in__label" for="sign-in-password">{messages.passwordLabel}</label>
-			<Input
-				id="sign-in-password"
-				type="password"
-				autocomplete="current-password"
-				enablePasswordVisibilityToggle
-				fullWidth
-				bind:value={password}
-				disabled={isSubmitting}
-			/>
-		</div>
+		<Input
+			id="sign-in-password"
+			type="password"
+			autocomplete="current-password"
+			placeholder={messages.password}
+			ariaLabel={messages.password}
+			enablePasswordVisibilityToggle
+			fullWidth
+			bind:value={password}
+			disabled={isSubmitting}
+		/>
 
 		{#if errorMessage}
 			<p class="sign-in__error" role="alert">{errorMessage}</p>
@@ -72,12 +70,12 @@
 	</form>
 
 	<div class="sign-in__links">
-		<Button onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
-			{messages.signInToPasswordReset}
+		<Button fullWidth onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
+			{messages.goToPasswordReset}
 		</Button>
 		{#if store.canSelfRegister}
-			<Button onclick={() => goto(store.routes.signUp)} disabled={isSubmitting}>
-				{messages.signInToSignUp}
+			<Button fullWidth onclick={() => goto(store.routes.signUp)} disabled={isSubmitting}>
+				{messages.goToSignUp}
 			</Button>
 		{/if}
 	</div>
@@ -87,25 +85,14 @@
 	.sign-in {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 32px;
 		color: var(--svelte-ui-text-color);
 	}
 
 	.sign-in__form {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.sign-in__field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.sign-in__label {
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
+		gap: 16px;
 	}
 
 	.sign-in__error {
@@ -116,7 +103,8 @@
 
 	.sign-in__links {
 		display: flex;
+		flex-direction: column;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 8px;
 	}
 </style>

@@ -381,24 +381,35 @@ export declare function unmetRequirementsOf(
 import type { PasswordRequirement } from '$lib/models/auth/auth.types';
 
 export interface AuthMessages {
-	// 入力欄と操作（抜粋。実際の項目は画面が出す文言のすべてに対応する）
-	readonly emailLabel: string;
-	readonly passwordLabel: string;
-	readonly currentPasswordLabel: string;
-	readonly newPasswordLabel: string;
+	// 入力欄（placeholder と読み上げの名前）
+	readonly email: string;
+	readonly password: string;
+	readonly currentPassword: string;
+	readonly newPassword: string;
+
+	// 送信
 	readonly signInSubmit: string;
 	readonly signUpSubmit: string;
+	readonly passwordChangeSubmit: string;
+	readonly passwordResetSubmit: string;
+
+	// 移動（抜粋）。行き先の画面を名にする。出発した画面は名に持たない
+	readonly goToSignUp: string;
+	readonly goToPasswordReset: string;
+	readonly backToSignIn: string;
 
 	// 確認待ち
 	readonly verifyEmailSentTo: (email: string) => string;
-	readonly verifyEmailCheckSpam: string;
 	readonly verifyEmailResend: string;
-	readonly verifyEmailUseAnotherAddress: string;
+	readonly goToSignUpWithAnotherEmail: string;
+
+	/** 確認待ちと再設定の、どちらの送信の後にも出す */
+	readonly checkSpam: string;
 
 	/** 語彙ごとの既定の案内。すべての語彙に対応する項目を持つ */
 	readonly errors: Readonly<Record<AuthErrorKind, string>>;
 	/** 画面によって案内が分かれるものだけ、専用の項目を持つ */
-	readonly errorCurrentPasswordInvalid: string;
+	readonly currentPasswordInvalid: string;
 	readonly weakPasswordReason: (requirements: readonly PasswordRequirement[]) => string;
 }
 

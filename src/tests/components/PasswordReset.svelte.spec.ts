@@ -16,7 +16,7 @@ const request = async (
 	screen: Awaited<ReturnType<typeof setup>>['screen'],
 	email = 'user@example.com'
 ) => {
-	await screen.getByLabelText(jaMessages.emailLabel).fill(email);
+	await screen.getByLabelText(jaMessages.email).fill(email);
 	await screen.getByRole('button', { name: jaMessages.passwordResetSubmit }).click();
 };
 
@@ -26,7 +26,7 @@ describe('PasswordReset — 要件 7.2, 7.3, 7.4（auth-store-and-screens）', (
 		await request(screen);
 
 		await expect.element(screen.getByText(jaMessages.passwordResetSent)).toBeInTheDocument();
-		await expect.element(screen.getByText(jaMessages.passwordResetCheckSpam)).toBeInTheDocument();
+		await expect.element(screen.getByText(jaMessages.checkSpam)).toBeInTheDocument();
 	});
 
 	it('入力したメールアドレスをそのまま渡し、完了しても遷移せず、完了を返す', async () => {
@@ -64,7 +64,7 @@ describe('PasswordReset — 要件 7.2, 7.3, 7.4（auth-store-and-screens）', (
 describe('PasswordReset の導線 — 要件 3.6', () => {
 	it('サインインへ戻る導線が、設定された経路へ遷移する', async () => {
 		const { screen } = await setup();
-		await screen.getByRole('button', { name: jaMessages.passwordResetToSignIn }).click();
+		await screen.getByRole('button', { name: jaMessages.backToSignIn }).click();
 
 		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.signIn);
 	});
@@ -97,7 +97,7 @@ describe('PasswordReset の失敗 — 要件 7.6（auth-store-and-screens）', (
 		await request(screen, 'not-an-email');
 
 		await expect.element(screen.getByText(jaMessages.errors['invalid-email'])).toBeInTheDocument();
-		await expect.element(screen.getByLabelText(jaMessages.emailLabel)).toHaveValue('not-an-email');
+		await expect.element(screen.getByLabelText(jaMessages.email)).toHaveValue('not-an-email');
 		await expect.element(screen.getByText(jaMessages.passwordResetSent)).not.toBeInTheDocument();
 		expect(onCompleted).not.toHaveBeenCalled();
 	});

@@ -50,40 +50,34 @@
 		<p class="password-change__notice" role="status">{messages.passwordChangeDone}</p>
 		<div class="password-change__actions">
 			<Button variant="filled" onclick={() => goto(store.routes.afterSignIn)}>
-				{messages.passwordChangeBack}
+				{messages.back}
 			</Button>
 		</div>
 	{:else}
 		<form class="password-change__form" onsubmit={submit} novalidate>
-			<div class="password-change__field">
-				<label class="password-change__label" for="password-change-current">
-					{messages.currentPasswordLabel}
-				</label>
-				<Input
-					id="password-change-current"
-					type="password"
-					autocomplete="current-password"
-					enablePasswordVisibilityToggle
-					fullWidth
-					bind:value={currentPassword}
-					disabled={isSubmitting}
-				/>
-			</div>
+			<Input
+				id="password-change-current"
+				type="password"
+				autocomplete="current-password"
+				placeholder={messages.currentPassword}
+				ariaLabel={messages.currentPassword}
+				enablePasswordVisibilityToggle
+				fullWidth
+				bind:value={currentPassword}
+				disabled={isSubmitting}
+			/>
 
-			<div class="password-change__field">
-				<label class="password-change__label" for="password-change-new">
-					{messages.newPasswordLabel}
-				</label>
-				<Input
-					id="password-change-new"
-					type="password"
-					autocomplete="new-password"
-					enablePasswordVisibilityToggle
-					fullWidth
-					bind:value={newPassword}
-					disabled={isSubmitting}
-				/>
-			</div>
+			<Input
+				id="password-change-new"
+				type="password"
+				autocomplete="new-password"
+				placeholder={messages.newPassword}
+				ariaLabel={messages.newPassword}
+				enablePasswordVisibilityToggle
+				fullWidth
+				bind:value={newPassword}
+				disabled={isSubmitting}
+			/>
 
 			{#if errorMessage}
 				<p class="password-change__error" role="alert">{errorMessage}</p>
@@ -92,7 +86,7 @@
 			<!-- 取りやめが左、実行が右。描画の順と見た目の順を一致させ、読み上げと Tab の順も揃える -->
 			<div class="password-change__actions">
 				<Button onclick={() => goto(store.routes.afterSignIn)} disabled={isSubmitting}>
-					{messages.passwordChangeCancel}
+					{messages.cancel}
 				</Button>
 				<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
 					{messages.passwordChangeSubmit}
@@ -106,25 +100,14 @@
 	.password-change {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 32px;
 		color: var(--svelte-ui-text-color);
 	}
 
 	.password-change__form {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.password-change__field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.password-change__label {
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-text-subtle-color);
+		gap: 16px;
 	}
 
 	.password-change__notice {
@@ -142,6 +125,6 @@
 	.password-change__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: 8px;
 	}
 </style>

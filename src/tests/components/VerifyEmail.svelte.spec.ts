@@ -27,7 +27,7 @@ describe('VerifyEmail の提示 — 要件 5.2, 5.3（auth-store-and-screens）'
 
 	it('迷惑メールフォルダを確認するよう示す', async () => {
 		const { screen } = await setup();
-		await expect.element(screen.getByText(jaMessages.verifyEmailCheckSpam)).toBeInTheDocument();
+		await expect.element(screen.getByText(jaMessages.checkSpam)).toBeInTheDocument();
 	});
 });
 
@@ -136,7 +136,7 @@ describe('VerifyEmail の再送 — 要件 5.4, 5.8（auth-store-and-screens）'
 describe('VerifyEmail の導線 — 要件 3.4', () => {
 	it('サインアウトの導線は遷移せず、段階の変化に任せる', async () => {
 		const { screen, store } = await setup();
-		await screen.getByRole('button', { name: jaMessages.verifyEmailSignOut }).click();
+		await screen.getByRole('button', { name: jaMessages.signOut }).click();
 
 		await vi.waitFor(() => expect(store.signOut).toHaveBeenCalledOnce());
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
@@ -152,7 +152,7 @@ describe('VerifyEmail の導線 — 要件 3.4', () => {
 			order.push('goto');
 		});
 
-		await screen.getByRole('button', { name: jaMessages.verifyEmailUseAnotherAddress }).click();
+		await screen.getByRole('button', { name: jaMessages.goToSignUpWithAnotherEmail }).click();
 
 		await vi.waitFor(() => expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.signUp));
 		expect(order).toEqual(['signOut', 'goto']);

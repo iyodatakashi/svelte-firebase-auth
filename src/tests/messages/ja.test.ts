@@ -37,7 +37,7 @@ describe('resolveMessages — 要件 9.5', () => {
 	it('指定された項目だけを差し替える', () => {
 		const messages = resolveMessages({ signInSubmit: 'ログイン' });
 		expect(messages.signInSubmit).toBe('ログイン');
-		expect(messages.emailLabel).toBe(jaMessages.emailLabel);
+		expect(messages.email).toBe(jaMessages.email);
 	});
 
 	it('errors は語彙単位で差し替え、指定のない語彙は既定を残す', () => {

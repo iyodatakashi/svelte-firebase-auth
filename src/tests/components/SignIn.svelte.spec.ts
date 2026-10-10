@@ -17,8 +17,8 @@ const signIn = async (
 	email = 'user@example.com',
 	password = 'secret'
 ) => {
-	await screen.getByLabelText(jaMessages.emailLabel).fill(email);
-	await screen.getByLabelText(jaMessages.passwordLabel).fill(password);
+	await screen.getByLabelText(jaMessages.email).fill(email);
+	await screen.getByLabelText(jaMessages.password).fill(password);
 	await screen.getByRole('button', { name: jaMessages.signInSubmit }).click();
 };
 
@@ -60,14 +60,14 @@ describe('SignIn — 要件 3 の注', () => {
 describe('SignIn の導線 — 要件 2.3, 3.1, 3.2', () => {
 	it('パスワードの再設定を要求する導線が、設定された経路へ遷移する', async () => {
 		const { screen } = await setup({ canSelfRegister: false });
-		await screen.getByRole('button', { name: jaMessages.signInToPasswordReset }).click();
+		await screen.getByRole('button', { name: jaMessages.goToPasswordReset }).click();
 
 		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.passwordReset);
 	});
 
 	it('自由登録が許可されているときは、登録の経路へ遷移する導線を出す', async () => {
 		const { screen } = await setup({ canSelfRegister: true });
-		await screen.getByRole('button', { name: jaMessages.signInToSignUp }).click();
+		await screen.getByRole('button', { name: jaMessages.goToSignUp }).click();
 
 		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.signUp);
 	});
@@ -75,7 +75,7 @@ describe('SignIn の導線 — 要件 2.3, 3.1, 3.2', () => {
 	it('自由登録が許可されていないときは、登録の導線を出さない', async () => {
 		const { screen } = await setup({ canSelfRegister: false });
 		await expect
-			.element(screen.getByRole('button', { name: jaMessages.signInToSignUp }))
+			.element(screen.getByRole('button', { name: jaMessages.goToSignUp }))
 			.not.toBeInTheDocument();
 	});
 });
@@ -96,10 +96,8 @@ describe('SignIn の失敗 — 要件 3.2, 3.3（auth-store-and-screens）', () 
 		vi.mocked(store.signIn).mockResolvedValueOnce(failureOf('invalid-credential'));
 		await signIn(screen, 'user@example.com', 'wrong');
 
-		await expect
-			.element(screen.getByLabelText(jaMessages.emailLabel))
-			.toHaveValue('user@example.com');
-		await expect.element(screen.getByLabelText(jaMessages.passwordLabel)).toHaveValue('wrong');
+		await expect.element(screen.getByLabelText(jaMessages.email)).toHaveValue('user@example.com');
+		await expect.element(screen.getByLabelText(jaMessages.password)).toHaveValue('wrong');
 	});
 });
 

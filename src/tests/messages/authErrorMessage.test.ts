@@ -62,7 +62,7 @@ describe('authErrorMessageOf — 要件 8.5', () => {
 
 	it('パスワードの変更の文脈では、資格情報の誤りを現在のパスワードの誤りとして示す', () => {
 		expect(authErrorMessageOf(errorOf('invalid-credential'), jaMessages, 'password-change')).toBe(
-			jaMessages.errorCurrentPasswordInvalid
+			jaMessages.currentPasswordInvalid
 		);
 	});
 
@@ -77,7 +77,7 @@ describe('authErrorMessageOf — 要件 8.5', () => {
 	it('差し替えられた文言を引く', () => {
 		const messages = resolveMessages({
 			errors: { 'network-error': '通信できません' },
-			errorCurrentPasswordInvalid: '今のパスワードが違います'
+			currentPasswordInvalid: '今のパスワードが違います'
 		});
 		expect(authErrorMessageOf(errorOf('network-error'), messages, 'sign-in')).toBe(
 			'通信できません'

@@ -16,8 +16,8 @@ const fillAndSubmit = async (
 	current = 'current',
 	next = 'next-secret'
 ) => {
-	await screen.getByLabelText(jaMessages.currentPasswordLabel).fill(current);
-	await screen.getByLabelText(jaMessages.newPasswordLabel).fill(next);
+	await screen.getByLabelText(jaMessages.currentPassword).fill(current);
+	await screen.getByLabelText(jaMessages.newPassword).fill(next);
 	await screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }).click();
 };
 
@@ -48,11 +48,9 @@ describe('PasswordChange — 要件 3.5', () => {
 			.element(screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }))
 			.not.toBeInTheDocument();
 		await expect
-			.element(screen.getByRole('button', { name: jaMessages.passwordChangeCancel }))
+			.element(screen.getByRole('button', { name: jaMessages.cancel }))
 			.not.toBeInTheDocument();
-		await expect
-			.element(screen.getByLabelText(jaMessages.currentPasswordLabel))
-			.not.toBeInTheDocument();
+		await expect.element(screen.getByLabelText(jaMessages.currentPassword)).not.toBeInTheDocument();
 	});
 
 	it('完了を組み込み側へ返す', async () => {
@@ -69,9 +67,7 @@ describe('PasswordChange — 要件 3.5', () => {
 		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
 		await fillAndSubmit(screen, 'wrong');
 
-		await expect
-			.element(screen.getByText(jaMessages.errorCurrentPasswordInvalid))
-			.toBeInTheDocument();
+		await expect.element(screen.getByText(jaMessages.currentPasswordInvalid)).toBeInTheDocument();
 		expect(onCompleted).not.toHaveBeenCalled();
 	});
 
@@ -79,7 +75,7 @@ describe('PasswordChange — 要件 3.5', () => {
 		const { screen } = await setup();
 		await fillAndSubmit(screen);
 
-		await screen.getByRole('button', { name: jaMessages.passwordChangeBack }).click();
+		await screen.getByRole('button', { name: jaMessages.back }).click();
 
 		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.afterSignIn);
 	});
@@ -92,14 +88,14 @@ describe('PasswordChange の操作の並び', () => {
 			(button) => button.textContent?.trim()
 		);
 
-		expect(labels).toEqual([jaMessages.passwordChangeCancel, jaMessages.passwordChangeSubmit]);
+		expect(labels).toEqual([jaMessages.cancel, jaMessages.passwordChangeSubmit]);
 	});
 });
 
 describe('PasswordChange の導線 — 要件 3.5', () => {
 	it('取りやめが、既定の行き先へ遷移する', async () => {
 		const { screen } = await setup();
-		await screen.getByRole('button', { name: jaMessages.passwordChangeCancel }).click();
+		await screen.getByRole('button', { name: jaMessages.cancel }).click();
 
 		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.afterSignIn);
 	});
@@ -111,9 +107,7 @@ describe('PasswordChange の失敗 — 要件 6.2, 6.3（auth-store-and-screens�
 		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
 		await fillAndSubmit(screen, 'wrong');
 
-		await expect
-			.element(screen.getByText(jaMessages.errorCurrentPasswordInvalid))
-			.toBeInTheDocument();
+		await expect.element(screen.getByText(jaMessages.currentPasswordInvalid)).toBeInTheDocument();
 		await expect
 			.element(screen.getByText(jaMessages.errors['invalid-credential']))
 			.not.toBeInTheDocument();
@@ -124,9 +118,7 @@ describe('PasswordChange の失敗 — 要件 6.2, 6.3（auth-store-and-screens�
 		vi.mocked(store.changePassword).mockResolvedValueOnce(failureOf('invalid-credential'));
 		await fillAndSubmit(screen, 'wrong');
 
-		await expect
-			.element(screen.getByText(jaMessages.errorCurrentPasswordInvalid))
-			.toBeInTheDocument();
+		await expect.element(screen.getByText(jaMessages.currentPasswordInvalid)).toBeInTheDocument();
 		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).not.toBeInTheDocument();
 	});
 
@@ -140,10 +132,8 @@ describe('PasswordChange の失敗 — 要件 6.2, 6.3（auth-store-and-screens�
 		await expect
 			.element(screen.getByText(jaMessages.weakPasswordReason(['uppercase'])))
 			.toBeInTheDocument();
-		await expect
-			.element(screen.getByLabelText(jaMessages.currentPasswordLabel))
-			.toHaveValue('current');
-		await expect.element(screen.getByLabelText(jaMessages.newPasswordLabel)).toHaveValue('weak');
+		await expect.element(screen.getByLabelText(jaMessages.currentPassword)).toHaveValue('current');
+		await expect.element(screen.getByLabelText(jaMessages.newPassword)).toHaveValue('weak');
 	});
 
 	it('処理中は同じ操作の重複した実行を受け付けない', async () => {

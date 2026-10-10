@@ -17,8 +17,8 @@ const fillAndSubmit = async (
 	email = 'user@example.com',
 	password = 'secret'
 ) => {
-	await screen.getByLabelText(jaMessages.emailLabel).fill(email);
-	await screen.getByLabelText(jaMessages.passwordLabel).fill(password);
+	await screen.getByLabelText(jaMessages.email).fill(email);
+	await screen.getByLabelText(jaMessages.password).fill(password);
 	await screen.getByRole('button', { name: jaMessages.signUpSubmit }).click();
 };
 
@@ -49,7 +49,7 @@ describe('SignUp — 要件 3 の注', () => {
 describe('SignUp の導線 — 要件 3.3', () => {
 	it('サインインへ戻る導線が、設定された経路へ遷移する', async () => {
 		const { screen } = await setup();
-		await screen.getByRole('button', { name: jaMessages.signUpToSignIn }).click();
+		await screen.getByRole('button', { name: jaMessages.backToSignIn }).click();
 
 		expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.signIn);
 	});
@@ -57,7 +57,7 @@ describe('SignUp の導線 — 要件 3.3', () => {
 	it('既に使われているメールアドレスのときだけ、再設定の経路へ遷移する導線を出す', async () => {
 		const { screen, store } = await setup();
 
-		const resetLink = screen.getByRole('button', { name: jaMessages.signUpToPasswordReset });
+		const resetLink = screen.getByRole('button', { name: jaMessages.goToPasswordReset });
 		await expect.element(resetLink).not.toBeInTheDocument();
 
 		vi.mocked(store.signUp).mockResolvedValueOnce(failureOf('email-already-in-use'));
@@ -99,10 +99,8 @@ describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5（auth-store-and-screens）'
 		await expect
 			.element(screen.getByText(jaMessages.weakPasswordReason(['min-length'])))
 			.toBeInTheDocument();
-		await expect
-			.element(screen.getByLabelText(jaMessages.emailLabel))
-			.toHaveValue('user@example.com');
-		await expect.element(screen.getByLabelText(jaMessages.passwordLabel)).toHaveValue('x');
+		await expect.element(screen.getByLabelText(jaMessages.email)).toHaveValue('user@example.com');
+		await expect.element(screen.getByLabelText(jaMessages.password)).toHaveValue('x');
 		await expect
 			.element(screen.getByRole('button', { name: jaMessages.signUpSubmit }))
 			.not.toBeDisabled();

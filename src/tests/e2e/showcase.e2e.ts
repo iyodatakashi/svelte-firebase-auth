@@ -181,7 +181,7 @@ test('サインインの失敗と、入力を保ったままの再入力 — 要
 
 test('パスワードの再設定の要求 — 要件 3.6, 7.1（auth-store-and-screens）', async ({ page }) => {
 	await page.goto('/signin');
-	await page.getByRole('button', { name: 'パスワードをお忘れですか' }).click();
+	await page.getByRole('button', { name: 'パスワードを再設定する' }).click();
 
 	await expect(page).toHaveURL('/password-reset');
 	await expect(page.getByRole('button', { name: '再設定用のメールを送る' })).toBeVisible();
