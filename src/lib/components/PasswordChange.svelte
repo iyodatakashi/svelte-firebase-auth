@@ -131,13 +131,11 @@
 
 	.password-change__notice {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-success-color);
 	}
 
 	.password-change__error {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
 	}
 </style>

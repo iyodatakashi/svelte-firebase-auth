@@ -130,7 +130,6 @@
 
 	.sign-in__error {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
 	}
 </style>

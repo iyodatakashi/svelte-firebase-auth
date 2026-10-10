@@ -149,13 +149,11 @@
 	}
 
 	.password-reset__notice {
-		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-success-color);
 	}
 
 	.password-reset__error {
 		margin: 0;
-		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
 	}
 </style>
