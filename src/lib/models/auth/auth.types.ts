@@ -168,8 +168,6 @@ export interface AuthMessages {
 	// 移動。行き先の画面を名にする。出発した画面は名に持たない
 	readonly goToSignUp: string;
 	readonly goToPasswordReset: string;
-	/** 確認待ちで行き詰まった利用者を、登録のやり直しへ送る */
-	readonly goToSignUpWithAnotherEmail: string;
 	readonly backToSignIn: string;
 	/** 変更を終えた利用者に示す、ただ1つの次の一手。行き先は組み込み側のページ（afterSignIn） */
 	readonly back: string;

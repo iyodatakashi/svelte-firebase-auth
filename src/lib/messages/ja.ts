@@ -24,7 +24,6 @@ export const jaMessages: AuthMessages = {
 
 	goToSignUp: 'サインアップ',
 	goToPasswordReset: 'パスワードを忘れた方',
-	goToSignUpWithAnotherEmail: '別のメールアドレスで登録し直す',
 	backToSignIn: 'サインインへ戻る',
 	back: '戻る',
 

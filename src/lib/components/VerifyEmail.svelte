@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Button } from '@14ch/svelte-ui';
-	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
 	import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
@@ -74,16 +73,6 @@
 		// 遷移しない。段階が変わるため、到達の制御が動かす
 		await store.signOut();
 	};
-
-	const signUpWithAnotherEmail = async () => {
-		if (isLeaving) {
-			return;
-		}
-		isLeaving = true;
-		// サインアウトを終えてから遷移する
-		await store.signOut();
-		await goto(store.routes.signUp);
-	};
 </script>
 
 <section class="verify-email">
@@ -107,9 +96,6 @@
 			disabled={isResending || isResendBlocked}
 		>
 			{messages.verifyEmailResend}
-		</Button>
-		<Button onclick={signUpWithAnotherEmail} disabled={isLeaving}>
-			{messages.goToSignUpWithAnotherEmail}
 		</Button>
 		<Button onclick={signOut} disabled={isLeaving}>
 			{messages.signOut}

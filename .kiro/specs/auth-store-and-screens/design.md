@@ -403,7 +403,6 @@ export interface AuthMessages {
 	// 確認待ち
 	readonly verifyEmailSentTo: (email: string) => string;
 	readonly verifyEmailResend: string;
-	readonly goToSignUpWithAnotherEmail: string;
 
 	/** 確認待ちと再設定の、どちらの送信の後にも出す */
 	readonly checkSpam: string;
@@ -617,9 +616,8 @@ export interface PasswordResetProps extends AuthBaseProps {
 **Responsibilities & Constraints**
 
 - 送信先のメールアドレスを示し、迷惑メールフォルダの確認を促す
-- 確認メールの再送・別のメールアドレスでの登録し直し・サインアウトの3つを置く
+- 確認メールの再送とサインアウトの2つを置く
 - **表示されている間だけ**、3秒間隔と前面への復帰を契機に `refreshVerification` を呼ぶ。**表示されなくなったら止める**
-- 「別のメールアドレスで登録し直す」は**サインアウトを終えてから**コールバックを呼ぶ
 
 **Contracts**: State [x]
 
@@ -756,7 +754,6 @@ Firebase のエラーコードを、**利用者への案内が分かれる粒度
 
 - 確認待ち画面が、表示中に取り直しを繰り返し、**画面を離れると止める**こと — 5.5, 5.6
 - 確認済みになったときに `onVerified` を呼ぶこと — 5.7
-- 「別のメールアドレスで登録し直す」がサインアウトを終えてからコールバックを呼ぶこと — 5.9
 - 自由登録が許可されていないとき、サインイン画面に登録の導線が出ないこと — 3.8
 - 頻度の超過のときに再送の操作を受け付けないこと — 5.8
 - 失敗しても入力した内容が残ること — 3.3, 4.5

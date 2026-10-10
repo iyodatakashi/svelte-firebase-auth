@@ -4,7 +4,7 @@ import { goto } from '$app/navigation';
 import VerifyEmail from '$lib/components/VerifyEmail.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
-import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
+import { failureOf, fakeStore } from '../support/fakeStore.svelte';
 
 const setup = async (email: string | null = 'user@example.com') => {
 	const { store, markVerified } = fakeStore({ email });
@@ -140,21 +140,5 @@ describe('VerifyEmail の導線 — 要件 3.4', () => {
 
 		await vi.waitFor(() => expect(store.signOut).toHaveBeenCalledOnce());
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
-	});
-
-	it('別のメールアドレスでの登録し直しは、サインアウトを終えてから登録の経路へ遷移する', async () => {
-		const { screen, store } = await setup();
-		const order: string[] = [];
-		vi.mocked(store.signOut).mockImplementation(async () => {
-			order.push('signOut');
-		});
-		vi.mocked(goto).mockImplementation(async () => {
-			order.push('goto');
-		});
-
-		await screen.getByRole('button', { name: jaMessages.goToSignUpWithAnotherEmail }).click();
-
-		await vi.waitFor(() => expect(vi.mocked(goto)).toHaveBeenCalledWith(fakeRoutes.signUp));
-		expect(order).toEqual(['signOut', 'goto']);
 	});
 });

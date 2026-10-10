@@ -24,7 +24,6 @@ export const enMessages: AuthMessages = {
 
 	goToSignUp: 'Sign up',
 	goToPasswordReset: 'Forgot your password?',
-	goToSignUpWithAnotherEmail: 'Sign up with a different email address',
 	backToSignIn: 'Back to sign in',
 	back: 'Back',
 
