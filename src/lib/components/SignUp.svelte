@@ -40,41 +40,51 @@
 
 <section class="sign-up">
 	<form class="sign-up__form" onsubmit={submit} novalidate>
-		<Input
-			id="sign-up-email"
-			type="email"
-			autocomplete="email"
-			placeholder={messages.email}
-			ariaLabel={messages.email}
-			fullWidth
-			bind:value={email}
-			disabled={isSubmitting}
-		/>
+		<div class="sign-up__fields">
+			<Input
+				id="sign-up-email"
+				type="email"
+				autocomplete="email"
+				placeholder={messages.email}
+				ariaLabel={messages.email}
+				fullWidth
+				bind:value={email}
+				disabled={isSubmitting}
+			/>
 
-		<Input
-			id="sign-up-password"
-			type="password"
-			autocomplete="new-password"
-			placeholder={messages.password}
-			ariaLabel={messages.password}
-			enablePasswordVisibilityToggle
-			fullWidth
-			bind:value={password}
-			disabled={isSubmitting}
-		/>
+			<Input
+				id="sign-up-password"
+				type="password"
+				autocomplete="new-password"
+				placeholder={messages.password}
+				ariaLabel={messages.password}
+				enablePasswordVisibilityToggle
+				fullWidth
+				bind:value={password}
+				disabled={isSubmitting}
+			/>
+		</div>
 
 		{#if errorMessage}
 			<p class="sign-up__error" role="alert">{errorMessage}</p>
 		{/if}
 
-		<Button type="submit" variant="filled" fullWidth loading={isSubmitting} disabled={isSubmitting}>
-			{messages.signUpSubmit}
-		</Button>
+		<div class="sign-up__actions">
+			<Button
+				type="submit"
+				variant="filled"
+				fullWidth
+				loading={isSubmitting}
+				disabled={isSubmitting}
+			>
+				{messages.signUpSubmit}
+			</Button>
+		</div>
 	</form>
 
 	<div class="sign-up__links">
 		{#if canOfferPasswordReset}
-			<Button onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
+			<Button fullWidth onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
 				{messages.goToPasswordReset}
 			</Button>
 		{/if}
@@ -85,28 +95,45 @@
 </section>
 
 <style>
+	/*
+		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		いずれも継承するため、組み込み側は包む要素に1度書けば全画面に効く
+	*/
 	.sign-up {
 		display: flex;
 		flex-direction: column;
-		gap: 32px;
+		gap: var(--auth-block-gap, 32px);
 		color: var(--svelte-ui-text-color);
 	}
 
+	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック間と同じ間隔で積む */
 	.sign-up__form {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: var(--auth-block-gap, 32px);
+	}
+
+	.sign-up__fields {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.sign-up__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.sign-up__links {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
 	}
 
 	.sign-up__error {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
-	}
-
-	.sign-up__links {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
 	}
 </style>

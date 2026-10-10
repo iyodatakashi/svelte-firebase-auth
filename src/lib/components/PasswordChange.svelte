@@ -55,29 +55,31 @@
 		</div>
 	{:else}
 		<form class="password-change__form" onsubmit={submit} novalidate>
-			<Input
-				id="password-change-current"
-				type="password"
-				autocomplete="current-password"
-				placeholder={messages.currentPassword}
-				ariaLabel={messages.currentPassword}
-				enablePasswordVisibilityToggle
-				fullWidth
-				bind:value={currentPassword}
-				disabled={isSubmitting}
-			/>
+			<div class="password-change__fields">
+				<Input
+					id="password-change-current"
+					type="password"
+					autocomplete="current-password"
+					placeholder={messages.currentPassword}
+					ariaLabel={messages.currentPassword}
+					enablePasswordVisibilityToggle
+					fullWidth
+					bind:value={currentPassword}
+					disabled={isSubmitting}
+				/>
 
-			<Input
-				id="password-change-new"
-				type="password"
-				autocomplete="new-password"
-				placeholder={messages.newPassword}
-				ariaLabel={messages.newPassword}
-				enablePasswordVisibilityToggle
-				fullWidth
-				bind:value={newPassword}
-				disabled={isSubmitting}
-			/>
+				<Input
+					id="password-change-new"
+					type="password"
+					autocomplete="new-password"
+					placeholder={messages.newPassword}
+					ariaLabel={messages.newPassword}
+					enablePasswordVisibilityToggle
+					fullWidth
+					bind:value={newPassword}
+					disabled={isSubmitting}
+				/>
+			</div>
 
 			{#if errorMessage}
 				<p class="password-change__error" role="alert">{errorMessage}</p>
@@ -97,17 +99,34 @@
 </section>
 
 <style>
+	/*
+		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		いずれも継承するため、組み込み側は包む要素に1度書けば全画面に効く
+	*/
 	.password-change {
 		display: flex;
 		flex-direction: column;
-		gap: 32px;
+		gap: var(--auth-block-gap, 32px);
 		color: var(--svelte-ui-text-color);
 	}
 
+	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック間と同じ間隔で積む */
 	.password-change__form {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: var(--auth-block-gap, 32px);
+	}
+
+	.password-change__fields {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.password-change__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--auth-inner-gap, 16px);
 	}
 
 	.password-change__notice {
@@ -120,11 +139,5 @@
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
-	}
-
-	.password-change__actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
 	}
 </style>

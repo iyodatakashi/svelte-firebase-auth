@@ -41,37 +41,45 @@
 </script>
 
 <section class="password-reset">
-	<p class="password-reset__description">{messages.passwordResetDescription}</p>
+	<div class="password-reset__lead">
+		<p class="password-reset__description">{messages.passwordResetDescription}</p>
+	</div>
 
 	<form class="password-reset__form" onsubmit={submit} novalidate>
-		<Input
-			id="password-reset-email"
-			type="email"
-			autocomplete="email"
-			placeholder={messages.email}
-			ariaLabel={messages.email}
-			fullWidth
-			bind:value={email}
-			disabled={isSubmitting}
-		/>
+		<div class="password-reset__fields">
+			<Input
+				id="password-reset-email"
+				type="email"
+				autocomplete="email"
+				placeholder={messages.email}
+				ariaLabel={messages.email}
+				fullWidth
+				bind:value={email}
+				disabled={isSubmitting}
+			/>
+		</div>
 
 		{#if hasRequested}
-			<p class="password-reset__notice" role="status">{messages.passwordResetSent}</p>
-			<p class="password-reset__spam">{messages.checkSpam}</p>
+			<div class="password-reset__sent">
+				<p class="password-reset__notice" role="status">{messages.passwordResetSent}</p>
+				<p class="password-reset__spam">{messages.checkSpam}</p>
+			</div>
 		{/if}
 		{#if errorMessage}
 			<p class="password-reset__error" role="alert">{errorMessage}</p>
 		{/if}
 
-		<Button
-			type="submit"
-			variant="filled"
-			fullWidth
-			loading={isSubmitting}
-			disabled={isSubmitting || isBlocked}
-		>
-			{messages.passwordResetSubmit}
-		</Button>
+		<div class="password-reset__actions">
+			<Button
+				type="submit"
+				variant="filled"
+				fullWidth
+				loading={isSubmitting}
+				disabled={isSubmitting || isBlocked}
+			>
+				{messages.passwordResetSubmit}
+			</Button>
+		</div>
 	</form>
 
 	<div class="password-reset__links">
@@ -82,41 +90,72 @@
 </section>
 
 <style>
+	/*
+		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		いずれも継承するため、組み込み側は包む要素に1度書けば全画面に効く
+	*/
 	.password-reset {
 		display: flex;
 		flex-direction: column;
-		gap: 32px;
+		gap: var(--auth-block-gap, 32px);
 		color: var(--svelte-ui-text-color);
 	}
 
-	.password-reset__description {
+	/* 読ませる文のまとまり */
+	.password-reset__lead {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.password-reset__lead p {
 		margin: 0;
 	}
 
+	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック間と同じ間隔で積む */
 	.password-reset__form {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: var(--auth-block-gap, 32px);
+	}
+
+	.password-reset__fields {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	/* 送信できたことの提示。通知と、迷惑メールの案内を1つのまとまりにする */
+	.password-reset__sent {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.password-reset__sent p {
+		margin: 0;
+	}
+
+	.password-reset__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.password-reset__links {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
 	}
 
 	.password-reset__notice {
-		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-success-color);
-	}
-
-	.password-reset__spam {
-		margin: 0;
 	}
 
 	.password-reset__error {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
-	}
-
-	.password-reset__links {
-		display: flex;
-		gap: 8px;
 	}
 </style>

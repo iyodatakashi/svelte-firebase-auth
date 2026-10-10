@@ -37,36 +37,46 @@
 
 <section class="sign-in">
 	<form class="sign-in__form" onsubmit={submit} novalidate>
-		<Input
-			id="sign-in-email"
-			type="email"
-			autocomplete="email"
-			placeholder={messages.email}
-			ariaLabel={messages.email}
-			fullWidth
-			bind:value={email}
-			disabled={isSubmitting}
-		/>
+		<div class="sign-in__fields">
+			<Input
+				id="sign-in-email"
+				type="email"
+				autocomplete="email"
+				placeholder={messages.email}
+				ariaLabel={messages.email}
+				fullWidth
+				bind:value={email}
+				disabled={isSubmitting}
+			/>
 
-		<Input
-			id="sign-in-password"
-			type="password"
-			autocomplete="current-password"
-			placeholder={messages.password}
-			ariaLabel={messages.password}
-			enablePasswordVisibilityToggle
-			fullWidth
-			bind:value={password}
-			disabled={isSubmitting}
-		/>
+			<Input
+				id="sign-in-password"
+				type="password"
+				autocomplete="current-password"
+				placeholder={messages.password}
+				ariaLabel={messages.password}
+				enablePasswordVisibilityToggle
+				fullWidth
+				bind:value={password}
+				disabled={isSubmitting}
+			/>
+		</div>
 
 		{#if errorMessage}
 			<p class="sign-in__error" role="alert">{errorMessage}</p>
 		{/if}
 
-		<Button type="submit" variant="filled" fullWidth loading={isSubmitting} disabled={isSubmitting}>
-			{messages.signInSubmit}
-		</Button>
+		<div class="sign-in__actions">
+			<Button
+				type="submit"
+				variant="filled"
+				fullWidth
+				loading={isSubmitting}
+				disabled={isSubmitting}
+			>
+				{messages.signInSubmit}
+			</Button>
+		</div>
 	</form>
 
 	<div class="sign-in__links">
@@ -82,29 +92,45 @@
 </section>
 
 <style>
+	/*
+		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		いずれも継承するため、組み込み側は包む要素に1度書けば全画面に効く
+	*/
 	.sign-in {
 		display: flex;
 		flex-direction: column;
-		gap: 32px;
+		gap: var(--auth-block-gap, 32px);
 		color: var(--svelte-ui-text-color);
 	}
 
+	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック間と同じ間隔で積む */
 	.sign-in__form {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: var(--auth-block-gap, 32px);
+	}
+
+	.sign-in__fields {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.sign-in__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.sign-in__links {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
 	}
 
 	.sign-in__error {
 		margin: 0;
 		font-size: var(--svelte-ui-font-size-sm);
 		color: var(--svelte-ui-error-color);
-	}
-
-	.sign-in__links {
-		display: flex;
-		flex-direction: column;
-		flex-wrap: wrap;
-		gap: 8px;
 	}
 </style>

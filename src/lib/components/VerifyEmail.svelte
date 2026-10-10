@@ -76,10 +76,12 @@
 </script>
 
 <section class="verify-email">
-	{#if store.email}
-		<p class="verify-email__sent-to">{messages.verifyEmailSentTo(store.email)}</p>
-	{/if}
-	<p class="verify-email__spam">{messages.checkSpam}</p>
+	<div class="verify-email__lead">
+		{#if store.email}
+			<p class="verify-email__sent-to">{messages.verifyEmailSentTo(store.email)}</p>
+		{/if}
+		<p class="verify-email__spam">{messages.checkSpam}</p>
+	</div>
 
 	{#if hasResent}
 		<p class="verify-email__notice" role="status">{messages.verifyEmailResent}</p>
@@ -91,46 +93,57 @@
 	<div class="verify-email__actions">
 		<Button
 			variant="filled"
+			fullWidth
 			onclick={resend}
 			loading={isResending}
 			disabled={isResending || isResendBlocked}
 		>
 			{messages.verifyEmailResend}
 		</Button>
-		<Button onclick={signOut} disabled={isLeaving}>
+		<Button fullWidth onclick={signOut} disabled={isLeaving}>
 			{messages.signOut}
 		</Button>
 	</div>
 </section>
 
 <style>
+	/*
+		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		いずれも継承するため、組み込み側は包む要素に1度書けば全画面に効く
+	*/
 	.verify-email {
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: var(--auth-block-gap, 32px);
 		color: var(--svelte-ui-text-color);
 	}
 
-	.verify-email__sent-to,
-	.verify-email__spam,
-	.verify-email__notice,
-	.verify-email__error {
+	/* 読ませる文のまとまり */
+	.verify-email__lead {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.verify-email__lead p {
 		margin: 0;
-	}
-
-	.verify-email__notice {
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-success-color);
-	}
-
-	.verify-email__error {
-		font-size: var(--svelte-ui-font-size-sm);
-		color: var(--svelte-ui-error-color);
 	}
 
 	.verify-email__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: var(--auth-inner-gap, 16px);
+	}
+
+	.verify-email__notice {
+		margin: 0;
+		font-size: var(--svelte-ui-font-size-sm);
+		color: var(--svelte-ui-success-color);
+	}
+
+	.verify-email__error {
+		margin: 0;
+		font-size: var(--svelte-ui-font-size-sm);
+		color: var(--svelte-ui-error-color);
 	}
 </style>
