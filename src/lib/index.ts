@@ -2,7 +2,9 @@
 
 export { createAuthStore } from './stores/auth.svelte';
 export { normalizeEmail } from './models/auth/auth';
-export { jaMessages, resolveMessages } from './messages/ja';
+export { jaMessages } from './messages/ja';
+export { enMessages } from './messages/en';
+export { resolveMessages } from './messages/resolveMessages';
 export { authErrorMessageOf } from './messages/authErrorMessage';
 
 export { default as AuthGate } from './components/AuthGate.svelte';

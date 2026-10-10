@@ -1,8 +1,4 @@
-import type {
-	AuthMessages,
-	AuthMessagesOverride,
-	PasswordRequirement
-} from '$lib/models/auth/auth.types';
+import type { AuthMessages, PasswordRequirement } from '$lib/models/auth/auth.types';
 
 /** 満たしていない要件を、利用者に伝わる文へ写す */
 const REQUIREMENT_TEXTS: Readonly<Record<PasswordRequirement, string>> = {
@@ -69,22 +65,3 @@ export const jaMessages: AuthMessages = {
 					.map((requirement) => REQUIREMENT_TEXTS[requirement])
 					.join('、')}。`
 };
-
-/** 指定された項目だけを差し替える。指定のない項目は既定を用いる */
-export const resolveMessages = (overrides?: AuthMessagesOverride): AuthMessages => {
-	if (!overrides) {
-		return jaMessages;
-	}
-	const { errors, ...rest } = overrides;
-	return {
-		...jaMessages,
-		...definedOnly(rest),
-		errors: { ...jaMessages.errors, ...definedOnly(errors ?? {}) }
-	};
-};
-
-/** 明示的に undefined を渡した項目で既定を消さない */
-const definedOnly = <T extends object>(source: T): Partial<T> =>
-	Object.fromEntries(
-		Object.entries(source).filter(([, value]) => value !== undefined)
-	) as Partial<T>;

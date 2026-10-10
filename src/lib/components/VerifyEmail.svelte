@@ -2,7 +2,7 @@
 	import { Button } from '@14ch/svelte-ui';
 	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
-	import { resolveMessages } from '$lib/messages/ja';
+	import { resolveMessages } from '$lib/messages/resolveMessages';
 	import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 

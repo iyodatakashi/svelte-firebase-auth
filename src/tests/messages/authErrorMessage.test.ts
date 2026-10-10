@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
-import { jaMessages, resolveMessages } from '$lib/messages/ja';
+import { jaMessages } from '$lib/messages/ja';
+import { resolveMessages } from '$lib/messages/resolveMessages';
 import type { AuthError, AuthErrorContext, AuthErrorKind } from '$lib/models/auth/auth.types';
 
 const ALL_KINDS: readonly AuthErrorKind[] = [

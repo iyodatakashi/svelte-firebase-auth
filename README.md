@@ -7,7 +7,7 @@ Firebase Authentication のメールアドレスとパスワードによる認�
 - **到達の制御** — 認証の段階に応じて到達を振り替える。組み込み側は根の配置に1つ置くだけでよい
 - **サインイン後の戻り先** — 開こうとしていた経路へ、サインインの後に進む
 - **エラーの語彙** — Firebase のエラーコードを、利用者への案内が分かれる粒度へ畳んで返す。**例外を投げず、戻り値で返す**
-- **文言の差し替え** — 既定の日本語を同梱し、組み込み側が項目単位で差し替えられる
+- **文言の差し替え** — 日本語と英語を同梱し、組み込み側が項目単位で差し替えられる
 
 ## 導入
 
@@ -257,6 +257,24 @@ if (!result.ok) {
 		errors: { 'network-error': '通信できません' }
 	}}
 />
+```
+
+日本語と英語を同梱する。英語で出すなら、`enMessages` をそのまま渡す。
+
+```svelte
+<script lang="ts">
+	import { SignIn, enMessages } from '@14ch/svelte-firebase-auth';
+</script>
+
+<SignIn {store} messages={enMessages} />
+```
+
+英語を基準にして一部だけ変えるなら、`resolveMessages` の第2引数に基準を渡す。**項目を部分指定しただけでは基準は日本語のままである。**
+
+```typescript
+import { resolveMessages, enMessages } from '@14ch/svelte-firebase-auth';
+
+const messages = resolveMessages({ signInSubmit: 'Log in' }, enMessages);
 ```
 
 文言のキーは、次の法則で付いている。

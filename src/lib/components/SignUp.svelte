@@ -2,7 +2,7 @@
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
-	import { resolveMessages } from '$lib/messages/ja';
+	import { resolveMessages } from '$lib/messages/resolveMessages';
 	import type { AuthBaseProps, AuthError } from '$lib/models/auth/auth.types';
 
 	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();

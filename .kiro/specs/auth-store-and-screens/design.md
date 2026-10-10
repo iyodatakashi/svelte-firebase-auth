@@ -31,7 +31,7 @@
 - **エラーの語彙** — `AuthErrorKind` と、Firebase のエラーコードからの写像
 - **メールアドレスの正規化** — `normalizeEmail`。組み込み側の照合とアクセス制御が同じ値を得るための唯一の出所
 - **5画面のマークアップと画面内の状態** — 入力・検証中の表示・エラーの提示・確認待ちの取り直し
-- **既定の日本語の文言と、項目単位の差し替えの仕組み**
+- **日本語と英語の文言と、項目単位の差し替えの仕組み**
 
 ### Out of Boundary
 
@@ -79,7 +79,7 @@ graph TB
         Index[index.ts 公開面]
         Components[components 5画面]
         Stores[stores createAuthStore]
-        Messages[messages 既定の日本語]
+        Messages[messages 日本語と英語]
         Models[models 型と純関数]
     end
 
@@ -134,7 +134,9 @@ src/lib/
 │   ├── auth.constants.ts               # エラーコードの写像表・取り直しの間隔
 │   └── auth.ts                         # 純関数 normalizeEmail / toAuthError / unmetRequirementsOf
 ├── messages/
-│   ├── ja.ts                           # 既定の日本語と、差し替えの併合
+│   ├── ja.ts                           # 既定の日本語
+│   ├── en.ts                           # 英語
+│   ├── resolveMessages.ts              # 基準への差し替えの併合。言語を持たない
 │   └── authErrorMessage.ts             # 語彙から利用者への文言を引く唯一の関数
 ├── stores/
 │   └── auth.svelte.ts                  # createAuthStore。購読と寿命を持つ唯一の場所
@@ -260,7 +262,7 @@ flowchart TB
 | Component            | Domain/Layer   | Intent                                                   | Req Coverage                                 | Key Dependencies                         | Contracts      |
 | -------------------- | -------------- | -------------------------------------------------------- | -------------------------------------------- | ---------------------------------------- | -------------- |
 | AuthModels           | models         | 型・語彙・純関数                                         | 1.7, 8                                       | —                                        | Service        |
-| AuthMessages         | messages       | 既定の日本語、項目単位の差し替え、語彙から文言を引く関数 | 8.5, 9.4, 9.5                                | AuthModels (P0)                          | Service        |
+| AuthMessages         | messages       | 日本語と英語、項目単位の差し替え、語彙から文言を引く関数 | 8.5, 9.4, 9.5                                | AuthModels (P0)                          | Service        |
 | AuthStoreFactory     | stores         | 認証状態の保持と Firebase Auth への操作                  | 1.1–1.10, 2, 3.1, 3.6, 4.1, 4.2, 5.1, 6, 7.1 | firebase/auth (P0), AuthModels (P0)      | Service, State |
 | SignIn               | screens        | サインインの画面                                         | 3.2–3.5, 3.7–3.9                             | AuthStoreFactory (P0), AuthMessages (P0) | —              |
 | SignUp               | screens        | 登録の画面                                               | 4.3–4.7                                      | 同上                                     | —              |
@@ -363,7 +365,7 @@ export declare function unmetRequirementsOf(
 
 | Field        | Detail                                       |
 | ------------ | -------------------------------------------- |
-| Intent       | 画面に出す既定の日本語と、項目単位の差し替え |
+| Intent       | 画面に出す日本語と英語と、項目単位の差し替え |
 | Requirements | 9.4, 9.5                                     |
 
 **Responsibilities & Constraints**
@@ -421,8 +423,14 @@ export type AuthMessagesOverride = Partial<Omit<AuthMessages, 'errors'>> & {
 /** 既定の日本語 */
 export declare const jaMessages: AuthMessages;
 
-/** 指定された項目だけを差し替える。指定のない項目は既定を用いる */
-export declare function resolveMessages(overrides?: AuthMessagesOverride): AuthMessages;
+/** 英語 */
+export declare const enMessages: AuthMessages;
+
+/** 指定された項目だけを差し替える。指定のない項目は基準（既定は日本語）を用いる */
+export declare function resolveMessages(
+	overrides?: AuthMessagesOverride,
+	base?: AuthMessages
+): AuthMessages;
 
 /** 同じ語彙でも案内が分かれる画面を区別する */
 export type AuthErrorContext =
