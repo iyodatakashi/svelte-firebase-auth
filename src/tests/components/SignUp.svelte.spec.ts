@@ -3,7 +3,12 @@ import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import SignUp from '$lib/components/SignUp.svelte';
 import { jaMessages } from '$lib/messages/ja';
-import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
+import {
+	authFailureOf,
+	fakeRoutes,
+	fakeStore,
+	operationFailureOf
+} from '../support/fakeStore.svelte';
 
 const setup = async () => {
 	const { store } = fakeStore();
@@ -60,7 +65,7 @@ describe('SignUp の導線 — 要件 3.3', () => {
 		const resetLink = screen.getByRole('button', { name: jaMessages.goToPasswordReset });
 		await expect.element(resetLink).not.toBeInTheDocument();
 
-		vi.mocked(store.signUp).mockResolvedValueOnce(failureOf('email-already-in-use'));
+		vi.mocked(store.signUp).mockResolvedValueOnce(authFailureOf('email-already-in-use'));
 		await fillAndSubmit(screen);
 		await resetLink.click();
 
@@ -71,7 +76,7 @@ describe('SignUp の導線 — 要件 3.3', () => {
 describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5（auth-store-and-screens）', () => {
 	it('既に使われているメールアドレスは、その旨を示す', async () => {
 		const { screen, store } = await setup();
-		vi.mocked(store.signUp).mockResolvedValueOnce(failureOf('email-already-in-use'));
+		vi.mocked(store.signUp).mockResolvedValueOnce(authFailureOf('email-already-in-use'));
 		await fillAndSubmit(screen);
 
 		await expect
@@ -82,7 +87,7 @@ describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5（auth-store-and-screens）'
 	it('強度が足りないときは、満たしていない要件を示す', async () => {
 		const { screen, store } = await setup();
 		vi.mocked(store.signUp).mockResolvedValueOnce(
-			failureOf('weak-password', ['min-length', 'numeric'])
+			authFailureOf('weak-password', ['min-length', 'numeric'])
 		);
 		await fillAndSubmit(screen, 'user@example.com', 'x');
 
@@ -93,7 +98,7 @@ describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5（auth-store-and-screens）'
 
 	it('失敗しても入力した内容を失わせず、入力し直せる状態を保つ', async () => {
 		const { screen, store } = await setup();
-		vi.mocked(store.signUp).mockResolvedValueOnce(failureOf('weak-password', ['min-length']));
+		vi.mocked(store.signUp).mockResolvedValueOnce(authFailureOf('weak-password', ['min-length']));
 		await fillAndSubmit(screen, 'user@example.com', 'x');
 
 		await expect
@@ -108,7 +113,7 @@ describe('SignUp の失敗 — 要件 4.3, 4.4, 4.5（auth-store-and-screens）'
 
 	it('失敗しても遷移せず、完了も返さない', async () => {
 		const { screen, store, onCompleted } = await setup();
-		vi.mocked(store.signUp).mockResolvedValueOnce(failureOf('registration-disabled'));
+		vi.mocked(store.signUp).mockResolvedValueOnce(authFailureOf('registration-disabled'));
 		await fillAndSubmit(screen);
 
 		await expect
@@ -129,5 +134,16 @@ describe('SignUp の処理中 — 要件 4.7（auth-store-and-screens）', () =>
 		await expect
 			.element(screen.getByRole('button', { name: jaMessages.signUpSubmit }))
 			.toBeDisabled();
+	});
+});
+
+describe('SignUp の結果の型 — 要件 2.6, 7.5（multi-account-auth）', () => {
+	it('認証以外の失敗は、その理由の案内を示す', async () => {
+		const { screen, store, onCompleted } = await setup();
+		vi.mocked(store.signUp).mockResolvedValueOnce(operationFailureOf({ kind: 'busy' }));
+		await fillAndSubmit(screen);
+
+		await expect.element(screen.getByText(jaMessages.operationBusy)).toBeInTheDocument();
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 });

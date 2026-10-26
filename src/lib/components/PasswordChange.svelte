@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
@@ -14,17 +15,42 @@
 	let errorMessage = $state<string | null>(null);
 	let hasChanged = $state(false);
 	let isSubmitting = $state(false);
+	let isDestroyed = false;
+	/** 表示しているアカウント。替わったら、切り替え元の入力と結果を破棄して表示し直す */
+	let shownId = untrack(() => store.activeId);
+
+	$effect.pre(() => {
+		const current = store.activeId;
+		if (current === shownId) {
+			return;
+		}
+		shownId = current;
+		currentPassword = '';
+		newPassword = '';
+		errorMessage = null;
+		hasChanged = false;
+		isSubmitting = false;
+	});
+
+	$effect(() => () => {
+		isDestroyed = true;
+	});
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault();
 		if (isSubmitting) {
 			return;
 		}
+		const accountId = store.activeId;
 		isSubmitting = true;
 		errorMessage = null;
 		hasChanged = false;
 
 		const result = await store.changePassword(currentPassword, newPassword);
+		// 切り替え元の結果で、切り替え先の表示を上書きしない
+		if (isDestroyed || store.activeId !== accountId) {
+			return;
+		}
 		isSubmitting = false;
 
 		if (result.ok) {

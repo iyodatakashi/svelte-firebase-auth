@@ -3,7 +3,12 @@ import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import SignIn from '$lib/components/SignIn.svelte';
 import { jaMessages } from '$lib/messages/ja';
-import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
+import {
+	authFailureOf,
+	fakeRoutes,
+	fakeStore,
+	operationFailureOf
+} from '../support/fakeStore.svelte';
 
 const setup = async (options: Parameters<typeof fakeStore>[0] = {}) => {
 	const { store } = fakeStore(options);
@@ -47,7 +52,7 @@ describe('SignIn — 要件 3 の注', () => {
 
 	it('失敗したときは完了を返さない', async () => {
 		const { screen, store, onCompleted } = await setup();
-		vi.mocked(store.signIn).mockResolvedValueOnce(failureOf('invalid-credential'));
+		vi.mocked(store.signIn).mockResolvedValueOnce(authFailureOf('invalid-credential'));
 		await signIn(screen, 'user@example.com', 'wrong');
 
 		await expect
@@ -83,7 +88,7 @@ describe('SignIn の導線 — 要件 2.3, 3.1, 3.2', () => {
 describe('SignIn の失敗 — 要件 3.2, 3.3（auth-store-and-screens）', () => {
 	it('資格情報の誤りは、どちらが誤っているかを示さない', async () => {
 		const { screen, store } = await setup();
-		vi.mocked(store.signIn).mockResolvedValueOnce(failureOf('invalid-credential'));
+		vi.mocked(store.signIn).mockResolvedValueOnce(authFailureOf('invalid-credential'));
 		await signIn(screen, 'user@example.com', 'wrong');
 
 		await expect
@@ -93,7 +98,7 @@ describe('SignIn の失敗 — 要件 3.2, 3.3（auth-store-and-screens）', () 
 
 	it('失敗しても入力した内容を失わせない', async () => {
 		const { screen, store } = await setup();
-		vi.mocked(store.signIn).mockResolvedValueOnce(failureOf('invalid-credential'));
+		vi.mocked(store.signIn).mockResolvedValueOnce(authFailureOf('invalid-credential'));
 		await signIn(screen, 'user@example.com', 'wrong');
 
 		await expect.element(screen.getByLabelText(jaMessages.email)).toHaveValue('user@example.com');
@@ -120,5 +125,16 @@ describe('SignIn の外形 — 要件 9.8, 9.9（auth-store-and-screens）', () 
 		const root = screen.container.querySelector('.sign-in');
 		expect(root).not.toBeNull();
 		expect(getComputedStyle(root as Element).position).not.toBe('fixed');
+	});
+});
+
+describe('SignIn の結果の型 — 要件 2.6, 7.5（multi-account-auth）', () => {
+	it('認証以外の失敗は、その理由の案内を示す', async () => {
+		const { screen, store, onCompleted } = await setup();
+		vi.mocked(store.signIn).mockResolvedValueOnce(operationFailureOf({ kind: 'busy' }));
+		await signIn(screen);
+
+		await expect.element(screen.getByText(jaMessages.operationBusy)).toBeInTheDocument();
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 });

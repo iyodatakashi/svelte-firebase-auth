@@ -72,6 +72,8 @@ export default defineConfig({
 					name: 'emulator',
 					environment: 'node',
 					include: ['src/**/*.emulator.test.{js,ts}'],
+					// 各ファイルがエミュレータの利用者を消して始める。並行に走らせると互いの利用者を消し合う
+					fileParallelism: false,
 					// エミュレータの起動と、確認メールの往復ぶんの余裕を見る
 					testTimeout: 30000,
 					hookTimeout: 30000

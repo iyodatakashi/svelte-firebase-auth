@@ -2,16 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import * as surface from '$lib/index';
 import {
+	AccountChooser,
+	AddAccount,
 	AuthGate,
+	AuthSession,
+	accountErrorMessageOf,
 	PasswordChange,
 	PasswordReset,
 	SignIn,
 	SignUp,
 	VerifyEmail,
 	createAuthStore,
+	type AccountChooserProps,
+	type AccountFailure,
+	type AccountOperation,
+	type AccountOperationError,
+	type AccountResult,
+	type AccountSummary,
+	type AddAccountProps,
 	type AuthBaseProps,
 	type AuthGateProps,
-	type AuthRoutes
+	type AuthRoutes,
+	type AuthSessionProps,
+	type SignOutAllResult,
+	type StorageStatus
 } from '$lib/index';
 import { jaMessages } from '$lib/messages/ja';
 import { fakeStore } from './support/fakeStore.svelte';
@@ -61,5 +75,60 @@ describe('公開面 — 要件 1.3, 1.5', () => {
 		const gateProps: Pick<AuthGateProps, 'store'> = { store: fakeStore({ routes }).store };
 
 		expect(gateProps.store.routes).toEqual(routes);
+	});
+});
+
+describe('複数アカウントの公開面 — 要件 7.2, 7.9（multi-account-auth）', () => {
+	it('ブラウザ保存の部品・追加ログイン・アカウント選択を、同じ入口から取り出せる', () => {
+		for (const component of [AuthSession, AddAccount, AccountChooser]) {
+			expect(component).toBeDefined();
+		}
+		expect(accountErrorMessageOf).toBeTypeOf('function');
+	});
+
+	it('スロット単位の内部のストアと、照合の純関数は公開しない', () => {
+		for (const name of [
+			'createSlotStore',
+			'parseStoredSlot',
+			'reconcileSlots',
+			'representativeOf',
+			'latestSignedIn'
+		]) {
+			expect(surface).not.toHaveProperty(name);
+		}
+	});
+
+	it('組み込み側が独自のメニューを書くための型を、公開面から書ける', () => {
+		const account: AccountSummary = {
+			id: 'a',
+			uid: 'uid-a',
+			email: 'a@example.com',
+			isEmailVerified: true
+		};
+		const error: AccountOperationError = { kind: 'busy' };
+		const failure: AccountFailure = { id: account.id, error };
+		const result: AccountResult<AccountSummary> = { ok: true, value: account };
+		const all: SignOutAllResult = {
+			ok: false,
+			reason: 'partial',
+			signedOutIds: [],
+			failed: [failure]
+		};
+		const operation: AccountOperation = { kind: 'select', id: account.id };
+		const status: StorageStatus = 'available';
+		const { store } = fakeStore();
+		const props: [AuthSessionProps, AddAccountProps, AccountChooserProps] = [
+			{ store, namespace: 'app' },
+			{ store, onCompleted: (completed) => completed.id },
+			{ store, onAddRequested: () => {} }
+		];
+
+		expect([result.ok, all.ok, operation.kind, status, props.length]).toEqual([
+			true,
+			false,
+			'select',
+			'available',
+			3
+		]);
 	});
 });

@@ -55,3 +55,15 @@ describe('基準の差し替え — 要件 9.4', () => {
 		expect(enMessages.errors['network-error']).toBe(before);
 	});
 });
+
+describe('追加と選択の文言の差し替え — 要件 7.4（multi-account-auth）', () => {
+	it('既存と同じく項目単位で差し替えられる', () => {
+		const messages = resolveMessages({
+			addAccount: 'Add',
+			signOutFailed: (email) => `failed ${email}`
+		});
+		expect(messages.addAccount).toBe('Add');
+		expect(messages.signOutFailed('a@example.com', '')).toBe('failed a@example.com');
+		expect(messages.signOutAll).toBe(jaMessages.signOutAll);
+	});
+});

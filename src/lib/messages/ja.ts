@@ -43,6 +43,20 @@ export const jaMessages: AuthMessages = {
 
 	checkSpam: 'メールが見つからないときは、迷惑メールフォルダもご確認ください。',
 
+	accountListLabel: 'サインイン中のアカウント',
+	accountActive: '使用中',
+	addAccount: '別のアカウントでサインイン',
+	signOutAccountLabel: (email) => `${email} からサインアウト`,
+	signOutAll: 'すべてのアカウントからサインアウト',
+	noAccounts: 'サインインしているアカウントはありません。',
+	storageUnavailable:
+		'このブラウザではサインインの状態を保存できません。再読み込みすると、サインインし直しが必要になることがあります。',
+	accountLimitReached: 'これ以上アカウントを追加できません。',
+	operationBusy: '別の処理を実行中です。終わってからお試しください。',
+	accountUnavailable: 'このアカウントは、サインインし直す必要があります。',
+	selectFailed: (email, reason) => `${email} に切り替えられませんでした。${reason}`,
+	signOutFailed: (email, reason) => `${email} からサインアウトできませんでした。${reason}`,
+
 	errors: {
 		'invalid-credential': 'メールアドレスまたはパスワードが違います。',
 		'invalid-email': 'メールアドレスの形式が正しくありません。',

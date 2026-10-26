@@ -29,6 +29,17 @@ export const resolveAuthGuard = ({
 			return { kind: 'redirect', to: routes.signIn, returnTo: origin };
 		}
 
+		case 'account-unselected':
+			// サインインは常に新しいアカウントとして入り、保持している他のアカウントを上書きしない
+			if (matchesAny(currentPath, [routes.signIn, routes.signUp, routes.passwordReset])) {
+				return { kind: 'allow' };
+			}
+			// 遷移しない。組み込み側の選択 UI からアカウントが選ばれるのを待つ
+			return {
+				kind: 'select',
+				returnTo: matchesRoute(currentPath, routes.verifyEmail) ? held : currentPath
+			};
+
 		case 'email-unverified':
 			return matchesRoute(currentPath, routes.verifyEmail)
 				? { kind: 'allow' }

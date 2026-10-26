@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Button } from '@14ch/svelte-ui';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
@@ -17,15 +18,42 @@
 	let isLeaving = $state(false);
 	// 完了は1度だけ返す。取り直しは繰り返し走る
 	let hasCompleted = false;
+	let isDestroyed = false;
+	/** 表示しているアカウント。替わったら、切り替え元の送信結果を破棄して表示し直す */
+	let shownId = untrack(() => store.activeId);
+
+	$effect.pre(() => {
+		const current = store.activeId;
+		if (current === shownId) {
+			return;
+		}
+		shownId = current;
+		errorMessage = null;
+		hasResent = false;
+		isResendBlocked = false;
+		isResending = false;
+		isLeaving = false;
+		hasCompleted = false;
+	});
+
+	$effect(() => () => {
+		isDestroyed = true;
+	});
+
+	/** 処理を始めたときのアカウントのまま、画面が残っているか。違えば結果を表示に反映しない */
+	const isStillShowing = (accountId: string | null) => !isDestroyed && store.activeId === accountId;
 
 	// 表示されている間だけ取り直す。停止し損ねると、画面を離れた後も通信が続く
+	// 選択中のアカウントが替われば、取り直しも張り直す
 	$effect(() => {
+		const accountId = store.activeId;
 		// 確認が済めば段階が変わる。この画面は遷移せず、到達の制御に任せる
 		const refresh = async () => {
 			if (hasCompleted || store.isEmailVerified) {
 				return;
 			}
-			if (await store.refreshVerification()) {
+			const isVerified = await store.refreshVerification();
+			if (isVerified && !hasCompleted && isStillShowing(accountId)) {
 				hasCompleted = true;
 				onCompleted?.();
 			}
@@ -50,11 +78,15 @@
 		if (isResending || isResendBlocked) {
 			return;
 		}
+		const accountId = store.activeId;
 		isResending = true;
 		errorMessage = null;
 		hasResent = false;
 
 		const result = await store.sendEmailVerification();
+		if (!isStillShowing(accountId)) {
+			return;
+		}
 		isResending = false;
 
 		if (result.ok) {
@@ -70,7 +102,7 @@
 			return;
 		}
 		isLeaving = true;
-		// 遷移しない。段階が変わるため、到達の制御が動かす
+		// 選択中のアカウントからログアウトする。遷移しない。段階が変わるため、到達の制御が動かす
 		await store.signOut();
 	};
 </script>

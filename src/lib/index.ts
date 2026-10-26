@@ -6,7 +6,9 @@ export { jaMessages } from './messages/ja';
 export { enMessages } from './messages/en';
 export { resolveMessages } from './messages/resolveMessages';
 export { authErrorMessageOf } from './messages/authErrorMessage';
+export { accountErrorMessageOf } from './messages/accountErrorMessage';
 
+export { default as AuthSession } from './components/AuthSession.svelte';
 export { default as AuthGate } from './components/AuthGate.svelte';
 
 export { default as SignIn } from './components/SignIn.svelte';
@@ -15,7 +17,17 @@ export { default as VerifyEmail } from './components/VerifyEmail.svelte';
 export { default as PasswordChange } from './components/PasswordChange.svelte';
 export { default as PasswordReset } from './components/PasswordReset.svelte';
 
+export { default as AddAccount } from './components/AddAccount.svelte';
+export { default as AccountChooser } from './components/AccountChooser.svelte';
+
 export type {
+	AccountChooserProps,
+	AccountFailure,
+	AccountOperation,
+	AccountOperationError,
+	AccountResult,
+	AccountSummary,
+	AddAccountProps,
 	AuthBaseProps,
 	AuthConfig,
 	AuthError,
@@ -26,8 +38,11 @@ export type {
 	AuthMessagesOverride,
 	AuthResult,
 	AuthRoutes,
+	AuthSessionProps,
 	AuthStage,
 	AuthStore,
 	CreateAuthStore,
-	PasswordRequirement
+	PasswordRequirement,
+	SignOutAllResult,
+	StorageStatus
 } from './models/auth/auth.types';

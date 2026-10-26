@@ -3,7 +3,8 @@ import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import PasswordChange from '$lib/components/PasswordChange.svelte';
 import { jaMessages } from '$lib/messages/ja';
-import { failureOf, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
+import type { AuthResult } from '$lib/models/auth/auth.types';
+import { failureOf, fakeAccount, fakeRoutes, fakeStore } from '../support/fakeStore.svelte';
 
 const setup = async (onCompleted?: () => void) => {
 	const { store } = fakeStore();
@@ -147,5 +148,69 @@ describe('PasswordChange の失敗 — 要件 6.2, 6.3（auth-store-and-screens�
 		await expect
 			.element(screen.getByRole('button', { name: jaMessages.passwordChangeSubmit }))
 			.toBeDisabled();
+	});
+});
+
+describe('PasswordChange の表示中の切り替え — 要件 3.6, 7.18（multi-account-auth）', () => {
+	const other = fakeAccount({ id: 'account-2', uid: 'uid-2', email: 'other@example.com' });
+
+	const setupSwitchable = async () => {
+		const { store, switchTo } = fakeStore();
+		const onCompleted = vi.fn();
+		const screen = await render(PasswordChange, { props: { store, onCompleted } });
+		return { screen, store, switchTo, onCompleted };
+	};
+
+	it('選択中のアカウントが変わったら、入力を破棄する', async () => {
+		const { screen, switchTo } = await setupSwitchable();
+		await screen.getByLabelText(jaMessages.currentPassword).fill('typed');
+
+		switchTo(other);
+
+		await expect.element(screen.getByLabelText(jaMessages.currentPassword)).toHaveValue('');
+	});
+
+	it('選択中のアカウントが変わったら、完了表示を破棄して入力し直せる状態にする', async () => {
+		const { screen, switchTo } = await setupSwitchable();
+		await fillAndSubmit(screen);
+		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).toBeInTheDocument();
+
+		switchTo(other);
+
+		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).not.toBeInTheDocument();
+		await expect.element(screen.getByLabelText(jaMessages.currentPassword)).toBeInTheDocument();
+	});
+
+	it('切り替え前に始めた変更が後から完了しても、完了表示も完了通知も行わない', async () => {
+		const { screen, store, switchTo, onCompleted } = await setupSwitchable();
+		let complete: (result: AuthResult) => void = () => {};
+		vi.mocked(store.changePassword).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		await fillAndSubmit(screen);
+		await vi.waitFor(() => expect(store.changePassword).toHaveBeenCalledOnce());
+
+		switchTo(other);
+		complete({ ok: true });
+
+		await expect.element(screen.getByLabelText(jaMessages.currentPassword)).toBeEnabled();
+		await expect.element(screen.getByText(jaMessages.passwordChangeDone)).not.toBeInTheDocument();
+		expect(onCompleted).not.toHaveBeenCalled();
+	});
+
+	it('画面が破棄された後に変更が完了しても、完了通知を行わない', async () => {
+		const { screen, store, onCompleted } = await setupSwitchable();
+		let complete: (result: AuthResult) => void = () => {};
+		vi.mocked(store.changePassword).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		await fillAndSubmit(screen);
+		await vi.waitFor(() => expect(store.changePassword).toHaveBeenCalledOnce());
+
+		await screen.unmount();
+		complete({ ok: true });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 });

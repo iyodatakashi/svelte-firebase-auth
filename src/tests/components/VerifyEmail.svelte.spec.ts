@@ -4,13 +4,14 @@ import { goto } from '$app/navigation';
 import VerifyEmail from '$lib/components/VerifyEmail.svelte';
 import { jaMessages } from '$lib/messages/ja';
 import { VERIFICATION_POLL_INTERVAL_MS } from '$lib/models/auth/auth.constants';
-import { failureOf, fakeStore } from '../support/fakeStore.svelte';
+import type { AuthResult } from '$lib/models/auth/auth.types';
+import { failureOf, fakeAccount, fakeStore } from '../support/fakeStore.svelte';
 
 const setup = async (email: string | null = 'user@example.com') => {
-	const { store, markVerified } = fakeStore({ email });
+	const { store, markVerified, switchTo } = fakeStore({ email });
 	const onCompleted = vi.fn();
 	const screen = await render(VerifyEmail, { props: { store, onCompleted } });
-	return { screen, store, markVerified, onCompleted };
+	return { screen, store, markVerified, switchTo, onCompleted };
 };
 
 afterEach(() => {
@@ -134,11 +135,87 @@ describe('VerifyEmail の再送 — 要件 5.4, 5.8（auth-store-and-screens）'
 });
 
 describe('VerifyEmail の導線 — 要件 3.4', () => {
+	it('サインアウトは選択中のアカウントのログアウトになる — 要件 5.9（multi-account-auth）', async () => {
+		const { screen, store } = await setup();
+		await screen.getByRole('button', { name: jaMessages.signOut }).click();
+
+		await vi.waitFor(() => expect(store.signOut).toHaveBeenCalledOnce());
+		expect(store.signOutAll).not.toHaveBeenCalled();
+	});
+
 	it('サインアウトの導線は遷移せず、段階の変化に任せる', async () => {
 		const { screen, store } = await setup();
 		await screen.getByRole('button', { name: jaMessages.signOut }).click();
 
 		await vi.waitFor(() => expect(store.signOut).toHaveBeenCalledOnce());
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+});
+
+describe('VerifyEmail の表示中の切り替え — 要件 3.6, 7.18（multi-account-auth）', () => {
+	const other = fakeAccount({ id: 'account-2', uid: 'uid-2', email: 'other@example.com' });
+
+	it('選択中のアカウントが変わったら、送信結果を破棄して切り替え先の状態で表示し直す', async () => {
+		const { screen, switchTo } = await setup();
+		await screen.getByRole('button', { name: jaMessages.verifyEmailResend }).click();
+		await expect.element(screen.getByText(jaMessages.verifyEmailResent)).toBeInTheDocument();
+
+		switchTo(other);
+
+		await expect.element(screen.getByText(jaMessages.verifyEmailResent)).not.toBeInTheDocument();
+		await expect
+			.element(screen.getByText(jaMessages.verifyEmailSentTo('other@example.com')))
+			.toBeInTheDocument();
+	});
+
+	it('切り替え前に始めた再送が後から完了しても、表示を更新しない', async () => {
+		const { screen, store, switchTo } = await setup();
+		let complete: (result: AuthResult) => void = () => {};
+		vi.mocked(store.sendEmailVerification).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		await screen.getByRole('button', { name: jaMessages.verifyEmailResend }).click();
+
+		switchTo(other);
+		complete({ ok: true });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		await expect.element(screen.getByText(jaMessages.verifyEmailResent)).not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.verifyEmailResend }))
+			.toBeEnabled();
+	});
+
+	it('切り替え前に始めた取り直しが後から確認済みを返しても、完了を返さない', async () => {
+		vi.useFakeTimers();
+		const { store, switchTo, onCompleted } = await setup();
+		let complete: (verified: boolean) => void = () => {};
+		vi.mocked(store.refreshVerification).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		await vi.advanceTimersByTimeAsync(VERIFICATION_POLL_INTERVAL_MS);
+		expect(store.refreshVerification).toHaveBeenCalledOnce();
+
+		switchTo(other);
+		complete(true);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(onCompleted).not.toHaveBeenCalled();
+	});
+
+	it('画面が破棄された後に取り直しが確認済みを返しても、完了を返さない', async () => {
+		vi.useFakeTimers();
+		const { screen, store, onCompleted } = await setup();
+		let complete: (verified: boolean) => void = () => {};
+		vi.mocked(store.refreshVerification).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		await vi.advanceTimersByTimeAsync(VERIFICATION_POLL_INTERVAL_MS);
+
+		await screen.unmount();
+		complete(true);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(onCompleted).not.toHaveBeenCalled();
 	});
 });

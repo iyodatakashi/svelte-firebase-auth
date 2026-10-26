@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { goto } from '$app/navigation';
-	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
+	import { accountErrorMessageOf } from '$lib/messages/accountErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
 	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
 
@@ -26,12 +26,12 @@
 		isSubmitting = false;
 
 		if (result.ok) {
-			// 遷移しない。段階が変わるため、到達の制御が動かす
+			// 遷移しない。新しいアカウントが選ばれて段階が変わるため、到達の制御が動かす
 			onCompleted?.();
 			return;
 		}
 		// 語彙ごとの分岐も文言もこの画面は持たない
-		errorMessage = authErrorMessageOf(result.error, messages, 'sign-in');
+		errorMessage = accountErrorMessageOf(result.error, messages, 'sign-in');
 	};
 </script>
 

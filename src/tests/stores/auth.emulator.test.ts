@@ -1,13 +1,28 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getIdTokenResult, signInWithEmailAndPassword } from 'firebase/auth';
-import type { Auth } from 'firebase/auth';
+import { getIdToken, signInWithEmailAndPassword, type Auth } from 'firebase/auth';
+import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
+import type { FirebaseApp } from 'firebase/app';
 import { createAuthStore } from '$lib/stores/auth.svelte';
-import type { AuthStore } from '$lib/models/auth/auth.types';
-import { clearEmulatorUsers, createEmulatorAuth, fetchOobCodes } from '../support/emulator';
+import type { AuthConfig, AuthStore } from '$lib/models/auth/auth.types';
+import {
+	clearEmulatorUsers,
+	createEmulatorAuth,
+	createEmulatorFirestore,
+	createEmulatorUser,
+	fetchOobCodes
+} from '../support/emulator';
+import { memoryBrowser } from '../support/memoryPersistence';
 
-const config = {
+/**
+ * Firebase の実際の振る舞いに依存する箇所を、エミュレータに当てて確かめる。
+ * 再読み込みを跨いだ復元は、ブラウザの保存領域を要するため E2E で確かめる
+ */
+
+const PASSWORD = 'secret-password';
+
+const config: AuthConfig = {
 	selfRegistration: true,
-	emailVerification: true,
+	emailVerification: false,
 	continueUrl: 'http://localhost:4173/',
 	routes: {
 		signIn: '/signin',
@@ -15,18 +30,22 @@ const config = {
 		verifyEmail: '/verify-email',
 		passwordReset: '/password-reset',
 		afterSignIn: '/'
-	}
+	},
+	multiAccount: true
 };
 
-let auth: Auth;
+let app: FirebaseApp;
+let base: Auth;
+let firestore: Firestore;
 let store: AuthStore;
 let dispose: () => Promise<void>;
 
 beforeEach(async () => {
 	await clearEmulatorUsers();
-	({ auth, dispose } = createEmulatorAuth());
-	store = createAuthStore(auth, config);
-	store.start();
+	({ app, auth: base, dispose } = createEmulatorAuth());
+	firestore = createEmulatorFirestore(app);
+	store = createAuthStore(base, config);
+	await store.start(memoryBrowser().openTab().persistence);
 });
 
 afterEach(async () => {
@@ -34,101 +53,105 @@ afterEach(async () => {
 	await dispose();
 });
 
-/** ID トークンのクレーム。組み込み側のアクセス制御が見るのはこちら */
-const emailVerifiedClaim = async (target: Auth): Promise<unknown> => {
-	const user = target.currentUser;
-	if (!user) {
-		throw new Error('サインインしていない');
+const signIn = async (email: string) => {
+	await createEmulatorUser(email, PASSWORD);
+	const result = await store.signIn(email, PASSWORD);
+	if (!result.ok) {
+		throw new Error(`サインインに失敗した: ${JSON.stringify(result.error)}`);
 	}
-	return (await getIdTokenResult(user)).claims.email_verified;
+	return result.value;
 };
 
-/** 別のセッションで確認を済ませる。待機側のクライアントには触れない */
-const verifyInAnotherSession = async (email: string): Promise<void> => {
-	const codes = await fetchOobCodes();
-	const code = codes.find((each) => each.email === email && each.requestType === 'VERIFY_EMAIL');
-	if (!code) {
-		throw new Error(`${email} 宛の確認メールが発行されていない`);
-	}
-	// 確認を適用したあと戻り先へ転送されるため、転送は追わない（戻り先はここでは動いていない）
-	const response = await fetch(code.oobLink, { redirect: 'manual' });
-	if (response.status >= 400) {
-		throw new Error(`確認に失敗した: ${response.status}`);
+/** 土台の App の Firestore で、その利用者の文書を書けるか */
+const canWrite = async (uid: string): Promise<boolean> => {
+	try {
+		await setDoc(doc(firestore, 'users', uid), { at: Date.now() });
+		return true;
+	} catch {
+		return false;
 	}
 };
 
-describe('確認済みが ID トークンのクレームへ届く — 要件 2.8, 4.1, 4.2, 5.1', () => {
-	it('別セッションで確認したあと、確認済みとクレームの双方が真になる', async () => {
-		const email = 'verify@example.com';
-		expect((await store.signUp(email, 'secret-password')).ok).toBe(true);
+describe('複数のスロット — 要件 1.1, 5.3', () => {
+	it('2つのアカウントに同時にログインし、片方だけをログアウトできる', async () => {
+		const a = await signIn('a@example.com');
+		const b = await signIn('b@example.com');
+		expect(store.accounts.map((account) => account.uid)).toEqual([a.uid, b.uid]);
 
-		// 登録するとサインイン済みになる（要件 4.1）
-		expect(store.isLoggedIn).toBe(true);
-		expect(store.email).toBe(email);
-		expect(store.isEmailVerified).toBe(false);
-		// 取り直す前は、クレームも古い値のまま
-		expect(await emailVerifiedClaim(auth)).toBeFalsy();
+		expect((await store.signOutAccount(a.id)).ok).toBe(true);
 
-		// 確認メールが発行されている（要件 4.2, 5.1）
-		await verifyInAnotherSession(email);
-
-		expect(await store.refreshVerification()).toBe(true);
-
-		// 利用者の値と、クレームを別々に確かめる
-		expect(store.isEmailVerified).toBe(true);
-		expect(auth.currentUser?.emailVerified).toBe(true);
-		expect(await emailVerifiedClaim(auth)).toBe(true);
-	});
-
-	it('確認メールに、設定した戻り先が反映される — 要件 1.9', async () => {
-		const email = 'continue-url@example.com';
-		await store.signUp(email, 'secret-password');
-
-		const codes = await fetchOobCodes();
-		const code = codes.find((each) => each.email === email);
-		expect(code?.oobLink).toContain(encodeURIComponent(config.continueUrl));
+		expect(store.accounts.map((account) => account.uid)).toEqual([b.uid]);
+		expect(store.activeId).toBe(b.id);
+		expect(base.currentUser?.uid).toBe(b.uid);
 	});
 });
 
-describe('再認証を伴うパスワードの変更 — 要件 6.1, 6.2, 6.6', () => {
-	const email = 'change@example.com';
-	const original = 'original-password';
-	const next = 'next-password';
+describe('土台の App のデータアクセス — 要件 3.2, 3.3, 7.7', () => {
+	it('選択を切り替えると、同じ Firestore が切り替え先の利用者としてルールに扱われる', async () => {
+		const a = await signIn('a@example.com');
+		const b = await signIn('b@example.com');
 
-	beforeEach(async () => {
-		await store.signUp(email, original);
+		expect(await canWrite(b.uid)).toBe(true);
+		expect(await canWrite(a.uid)).toBe(false);
+
+		await store.selectAccount(a.id);
+		expect(await canWrite(a.uid)).toBe(true);
+		expect(await canWrite(b.uid)).toBe(false);
+		expect((await getDoc(doc(firestore, 'users', a.uid))).exists()).toBe(true);
 	});
 
-	it('正しい現在のパスワードで変更でき、新しいパスワードでサインインできる', async () => {
-		expect((await store.changePassword(original, next)).ok).toBe(true);
-		// 完了後もサインイン状態を保つ（要件 6.4）
-		expect(store.isLoggedIn).toBe(true);
+	it('未選択になると土台は空になり、データへのアクセスは拒否される', async () => {
+		const a = await signIn('a@example.com');
+		await signIn('b@example.com');
+		await store.signOut();
 
-		const other = createEmulatorAuth();
-		await expect(signInWithEmailAndPassword(other.auth, email, next)).resolves.toBeDefined();
-		await other.dispose();
+		expect(store.stage).toBe('account-unselected');
+		expect(base.currentUser).toBeNull();
+		expect(await canWrite(a.uid)).toBe(false);
 	});
 
-	it('誤った現在のパスワードは資格情報の誤りとして返り、元のパスワードが有効なまま残る', async () => {
-		const result = await store.changePassword('wrong-password', next);
+	it('パスワードを変更した後も、土台の複製でデータにアクセスできる', async () => {
+		const a = await signIn('a@example.com');
+		expect((await store.changePassword(PASSWORD, 'next-password')).ok).toBe(true);
 
-		expect(result.ok).toBe(false);
-		expect(result.ok === false && result.error.kind).toBe('invalid-credential');
-
-		const other = createEmulatorAuth();
-		// 変更前のパスワードで入れる
-		await expect(signInWithEmailAndPassword(other.auth, email, original)).resolves.toBeDefined();
-		// 新しいパスワードは設定されていない
-		await expect(signInWithEmailAndPassword(other.auth, email, next)).rejects.toThrow();
-		await other.dispose();
+		expect(base.currentUser?.uid).toBe(a.uid);
+		expect(await canWrite(a.uid)).toBe(true);
 	});
 });
 
-describe('未登録のメールアドレスへの再設定の要求 — 要件 7.2', () => {
+describe('土台とスロットの独立 — 要件 4.1, 5.3', () => {
+	it('土台を空にしても、スロットのログイン状態は残り、選び直せる', async () => {
+		const a = await signIn('a@example.com');
+		const b = await signIn('b@example.com');
+		await store.selectAccount(a.id);
+		// B は選ばれていない間も、トークンを取り直せる
+		await store.signOut();
+		await store.selectAccount(b.id);
+
+		const copied = base.currentUser;
+		expect(copied?.uid).toBe(b.uid);
+		expect(copied && (await getIdToken(copied, true))).toBeTruthy();
+		expect(await canWrite(b.uid)).toBe(true);
+	});
+
+	it('開始時、土台に残っていたログインを使わず、選択中の複製か空にする', async () => {
+		store.stop();
+		await createEmulatorUser('legacy@example.com', PASSWORD);
+		await signInWithEmailAndPassword(base, 'legacy@example.com', PASSWORD);
+		expect(base.currentUser).not.toBeNull();
+
+		store = createAuthStore(base, config);
+		await store.start(memoryBrowser().openTab().persistence);
+
+		expect(store.stage).toBe('signed-out');
+		expect(base.currentUser).toBeNull();
+	});
+});
+
+describe('アカウントに依らない再設定の要求 — 要件 7.2（auth-store-and-screens）', () => {
 	it('登録の有無によらず、成功として返る', async () => {
 		const unregistered = await store.sendPasswordReset('nobody@example.com');
-
-		await store.signUp('registered@example.com', 'secret-password');
+		await createEmulatorUser('registered@example.com', PASSWORD);
 		const registered = await store.sendPasswordReset('registered@example.com');
 
 		expect(unregistered).toEqual(registered);
@@ -144,25 +167,5 @@ describe('未登録のメールアドレスへの再設定の要求 — 要件 7
 				(each) => each.requestType === 'PASSWORD_RESET' && each.email === 'nobody@example.com'
 			)
 		).toEqual([]);
-	});
-});
-
-describe('メールアドレスの確認を求めない組み込み先 — 要件 1.11, 4.2', () => {
-	it('登録してもサインイン済みになり、確認メールは発行されない', async () => {
-		const { auth: other, dispose: disposeOther } = createEmulatorAuth();
-		const notRequiring = createAuthStore(other, { ...config, emailVerification: false });
-		notRequiring.start();
-
-		const email = 'no-verification@example.com';
-		expect((await notRequiring.signUp(email, 'secret-password')).ok).toBe(true);
-		expect(notRequiring.isLoggedIn).toBe(true);
-		expect(notRequiring.requiresEmailVerification).toBe(false);
-
-		// 実際に確認メールが発行されていないことを、エミュレータ側で確かめる
-		const codes = await fetchOobCodes();
-		expect(codes.filter((each) => each.email === email)).toEqual([]);
-
-		notRequiring.stop();
-		await disposeOther();
 	});
 });

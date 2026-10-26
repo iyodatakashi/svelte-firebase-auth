@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { goto } from '$app/navigation';
-	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
+	import { accountErrorMessageOf } from '$lib/messages/accountErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
-	import type { AuthBaseProps, AuthError } from '$lib/models/auth/auth.types';
+	import type { AccountOperationError, AuthBaseProps } from '$lib/models/auth/auth.types';
 
 	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
 
@@ -11,12 +11,16 @@
 
 	let email = $state('');
 	let password = $state('');
-	let failure = $state<AuthError | null>(null);
+	let failure = $state<AccountOperationError | null>(null);
 	let isSubmitting = $state(false);
 
-	const errorMessage = $derived(failure ? authErrorMessageOf(failure, messages, 'sign-up') : null);
+	const errorMessage = $derived(
+		failure === null ? null : accountErrorMessageOf(failure, messages, 'sign-up')
+	);
 	// 既に使われているメールアドレスのときだけ、パスワードの再設定へ導く
-	const canOfferPasswordReset = $derived(failure?.kind === 'email-already-in-use');
+	const canOfferPasswordReset = $derived(
+		failure?.kind === 'auth' && failure.cause.kind === 'email-already-in-use'
+	);
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault();

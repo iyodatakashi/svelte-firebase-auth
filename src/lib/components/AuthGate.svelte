@@ -39,7 +39,7 @@
 
 	// 効果はブラウザでのみ走る。サーバ側の描画では遷移しない
 	$effect(() => {
-		if (decision.kind !== 'redirect') {
+		if (decision.kind !== 'redirect' && decision.kind !== 'select') {
 			redirectingTo = null;
 			return;
 		}
@@ -52,6 +52,11 @@
 			withStorage((storage) => storage.setItem(RETURN_TO_KEY, returnTo));
 		}
 
+		// 選択待ちでは遷移しない。組み込み側がガードの外に置いた選択 UI からアカウントが選ばれるのを待つ
+		if (decision.kind === 'select') {
+			redirectingTo = null;
+			return;
+		}
 		if (redirectingTo === decision.to) {
 			return;
 		}
@@ -61,8 +66,9 @@
 	});
 </script>
 
+<!-- 選択待ちでは判定待ちの表示も出さない。選択 UI を妨げない -->
 {#if decision.kind === 'allow'}
 	{@render children()}
-{:else if pending}
+{:else if decision.kind !== 'select' && pending}
 	{@render pending()}
 {/if}

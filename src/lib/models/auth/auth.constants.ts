@@ -42,3 +42,6 @@ export const PASSWORD_REQUIREMENTS: readonly {
 
 /** 確認済みの取り直しを繰り返す間隔（ミリ秒）。公開面の設定にしない */
 export const VERIFICATION_POLL_INTERVAL_MS = 3000;
+
+/** スロットの名前付き App の名前の接頭辞。後ろにスロットの ID が続く */
+export const SLOT_APP_PREFIX = 'svelte-firebase-auth/';
