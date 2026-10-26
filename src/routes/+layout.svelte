@@ -1,10 +1,25 @@
 <script lang="ts">
 	import '@14ch/svelte-ui/styles';
 	import { setContext, type Snippet } from 'svelte';
-	import { AuthGate, createAuthStore, type AuthConfig } from '$lib/index';
+	import { Dialog, PopupMenuButton } from '@14ch/svelte-ui';
+	import { page } from '$app/state';
+	import {
+		AccountChooser,
+		AddAccount,
+		AuthGate,
+		AuthSession,
+		createAuthStore,
+		type AuthConfig
+	} from '$lib/index';
 	import { auth } from './firebase';
 
 	let { children }: { children: Snippet } = $props();
+
+	/**
+	 * ショーケースは、複数アカウント指定と単一アカウント指定の両方の組み込み例を兼ねる。
+	 * 指定はストアを作るときに決まるため、ビルド時の環境変数で選ぶ。既定は複数アカウント
+	 */
+	const multiAccount = import.meta.env.VITE_MULTI_ACCOUNT !== 'false';
 
 	const config: AuthConfig = {
 		// 自由登録の可否。Firebase 側の設定と揃えるのは組み込み側の運用
@@ -20,22 +35,87 @@
 			verifyEmail: '/verify-email',
 			passwordReset: '/password-reset',
 			afterSignIn: '/'
-		}
+		},
+		// 複数のアカウントのログイン状態を保持するか。false なら最大1件で、選択の UI は要らない
+		multiAccount
 	};
 
+	// 土台の App の Auth を渡す。選択中のアカウントは、この Auth へ複製される
 	const store = createAuthStore(auth, config);
 	setContext('authStore', store);
 
-	// 生成と開始を分ける。捨てたストアの購読が生き続けないよう、停止と対で持つ
+	let addDialog: ReturnType<typeof Dialog> | undefined = $state();
+	let chooserDialog: ReturnType<typeof Dialog> | undefined = $state();
+
+	/** サインイン・登録・再設定の経路。未選択でもここではサインインでき、選択ダイアログで塞がない */
+	const isOnSignInRoute = $derived(
+		[config.routes.signIn, config.routes.signUp, config.routes.passwordReset].includes(
+			page.url.pathname
+		)
+	);
+
+	// 選択中のアカウントからログアウトして他のアカウントが残ったら、選択ダイアログを出す。
+	// 自動では選ばない
 	$effect(() => {
-		store.start();
-		return () => store.stop();
+		if (store.stage === 'account-unselected' && !isOnSignInRoute) {
+			chooserDialog?.open();
+		} else {
+			chooserDialog?.close();
+		}
 	});
+
+	/** 組み込み側のユーザーメニューを模した入口。項目を選ぶだけで切り替える */
+	const menuItems = $derived([
+		...store.accounts.map((account) => ({
+			label:
+				account.id === store.activeId
+					? `${account.email}（使用中）`
+					: (account.email ?? account.uid),
+			// 未保存のデータがあれば、ここで確かめてから切り替える
+			callback: () => void store.selectAccount(account.id),
+			disabled: store.operation !== null
+		})),
+		'separator' as const,
+		{
+			label: '別のアカウントにログイン',
+			callback: () => addDialog?.open(),
+			disabled: store.operation !== null
+		},
+		...store.accounts.map((account) => ({
+			label: `${account.email} からサインアウト`,
+			callback: () => void store.signOutAccount(account.id),
+			disabled: store.operation !== null
+		})),
+		{
+			label: 'すべてのアカウントからサインアウト',
+			callback: () => void store.signOutAll(),
+			disabled: store.operation !== null
+		}
+	]);
 </script>
 
 {#snippet pending()}
-	<p class="showcase__pending">読み込み中…</p>
+	{#if store.startError}
+		<p class="showcase__pending">開始できませんでした。再読み込みしてください。</p>
+	{:else}
+		<p class="showcase__pending">読み込み中…</p>
+	{/if}
 {/snippet}
+
+<!--
+	ブラウザ保存とストアの寿命。根の配置に1つ置く。
+	名前空間は指定ごとに分ける。複数アカウントの記録を単一アカウント指定で読むと、1件を残して他をログアウトする
+-->
+<AuthSession {store} namespace={multiAccount ? 'showcase' : 'showcase-single'} />
+
+<header class="showcase__header">
+	<!-- 単一アカウント指定では、アカウントの一覧・選択の UI を置かない -->
+	{#if multiAccount && store.accounts.length > 0}
+		<PopupMenuButton {menuItems} ariaLabel="アカウントのメニュー">
+			{store.activeAccount?.email ?? 'アカウントを選択'}
+		</PopupMenuButton>
+	{/if}
+</header>
 
 <main class="showcase">
 	<!-- 到達の制御はここに1つ置くだけでよい。判定が済むまで子を描画しない -->
@@ -44,7 +124,51 @@
 	</AuthGate>
 </main>
 
+<!-- 選択と追加のダイアログは、ガードの外に置く。保護された内容が隠れていても操作できる -->
+{#if multiAccount}
+	<Dialog
+		bind:this={chooserDialog}
+		title="使うアカウントを選んでください"
+		ariaLabel="使うアカウントを選んでください"
+		closeIfClickOutside={false}
+	>
+		<AccountChooser
+			{store}
+			onAddRequested={() => {
+				chooserDialog?.close();
+				addDialog?.open();
+			}}
+		/>
+	</Dialog>
+
+	<Dialog
+		bind:this={addDialog}
+		title="別のアカウントにログイン"
+		ariaLabel="別のアカウントにログイン"
+	>
+		<AddAccount
+			{store}
+			onCompleted={() => addDialog?.close()}
+			onCancel={() => {
+				addDialog?.close();
+				// 選択ダイアログから来て取りやめたら、選択へ戻す
+				if (store.stage === 'account-unselected' && !isOnSignInRoute) {
+					chooserDialog?.open();
+				}
+			}}
+		/>
+	</Dialog>
+{/if}
+
 <style>
+	.showcase__header {
+		display: flex;
+		justify-content: flex-end;
+		max-width: 26rem;
+		margin: 0 auto;
+		padding: 1rem 1rem 0;
+	}
+
 	.showcase {
 		max-width: 26rem;
 		margin: 0 auto;
