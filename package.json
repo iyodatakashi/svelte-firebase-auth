@@ -1,6 +1,11 @@
 {
 	"name": "@14ch/svelte-firebase-auth",
 	"version": "0.0.1",
+	"description": "Email-and-password authentication for SvelteKit on Firebase: auth store, five screens and route guarding",
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
@@ -34,13 +39,13 @@
 		}
 	},
 	"peerDependencies": {
-		"@14ch/svelte-ui": "^0.0.61",
+		"@14ch/svelte-ui": "0.0.x",
 		"@sveltejs/kit": "^2.63.0",
 		"firebase": "^12.18.0",
 		"svelte": "^5.0.0"
 	},
 	"devDependencies": {
-		"@14ch/svelte-ui": "^0.0.70",
+		"@14ch/svelte-ui": "0.0.x",
 		"@eslint/js": "^10.0.1",
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
