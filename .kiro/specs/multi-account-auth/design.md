@@ -87,7 +87,6 @@ flowchart LR
     Slots[スロット: 名前付き App・Auth・SlotStore]
     Screens[5画面]
     Add[AddAccount]
-    Chooser[AccountChooser]
     Gate[AuthGate]
   end
   BaseApp --> Data
@@ -95,10 +94,8 @@ flowchart LR
   Store -- 選択中ユーザーを複製 --> BaseApp
   Menu --> Store
   Dialog --> Add
-  Dialog --> Chooser
   Screens --> Store
   Add --> Store
-  Chooser --> Store
   Session --> Store
   Store --> Slots
   Store --> Gate
@@ -147,8 +144,7 @@ src/lib/
 │   └── auth.svelte.ts         # スロットを束ね、土台へ複製する公開の AuthStore
 └── components/
     ├── AuthSession.svelte     # ブラウザ保存と別タブ通知、ストアの開始・停止
-    ├── AddAccount.svelte      # 追加ログイン・登録・再設定の中身
-    └── AccountChooser.svelte  # 任意利用のアカウント選択・個別/全件ログアウトの中身
+    └── AddAccount.svelte      # 追加ログイン・登録・再設定の中身
 ```
 
 ### Modified Files
@@ -160,7 +156,7 @@ src/lib/
 - `src/lib/components/SignIn.svelte`・`SignUp.svelte` — `signIn`・`signUp` の新しい結果型に合わせる。
 - `src/lib/components/VerifyEmail.svelte`・`PasswordChange.svelte` — 選択中アカウントが変わったら画面の途中状態を破棄する（要件 7.18）。`VerifyEmail` の `signOut` は選択中アカウントのログアウトになる。
 - `src/lib/messages/ja.ts`、`en.ts`、`resolveMessages.ts` — 追加・選択の文言と差し替え。`accountErrorMessageOf`（`accountErrorMessage.ts`）でアカウントの操作の失敗を文言へ写す。組み込み独自のメニューでも同じ案内を出せるよう公開する。
-- `src/lib/index.ts` — `AuthSession`、`AddAccount`、`AccountChooser`、`accountErrorMessageOf` と対応する型を公開する。保存の契約（`AccountPersistence`・`StoredSlot`・`StorageResult`）と内部のスロット（`SlotStore`・`Slot`・照合の型と純関数）は公開しない。
+- `src/lib/index.ts` — `AuthSession`、`AddAccount`、`accountErrorMessageOf` と対応する型を公開する。保存の契約（`AccountPersistence`・`StoredSlot`・`StorageResult`）と内部のスロット（`SlotStore`・`Slot`・照合の型と純関数）は公開しない。
 - `src/routes/` — ショーケースを新しいストアへ移し、ユーザーメニューを模した入口とガードの外に置く選択 UI を加える。
 - `src/tests/` — ストア、保存、エミュレータ、ショーケースの要件別検証。既存テストを新しいストアへ移す。エミュレータの検証に Firestore を加える（開発時のみ）。
 - `firebase.json`・`package.json` — 検証用に Firestore エミュレータとルールを加える。
@@ -233,15 +229,15 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement                                 | Summary                  | Components                                                     | Interfaces                                             | Flows            |
-| ------------------------------------------- | ------------------------ | -------------------------------------------------------------- | ------------------------------------------------------ | ---------------- |
-| 1.1, 1.2, 1.3, 1.4, 1.5                     | 複数の保持と一覧         | AuthStore、AccountChooser                                      | AccountSummary、accounts、activeId                     | 復元・一覧       |
-| 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8      | 追加・重複・登録・再設定 | AuthStore、AddAccount、SignIn、SignUp                          | signIn、signUp、cancelPendingSignIn、sendPasswordReset | サインイン       |
-| 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7           | 切り替えと競合           | AuthStore、SlotStore、VerifyEmail、PasswordChange              | selectAccount、user、operation                         | 切り替え         |
-| 4.1–4.12, 4.14, 4.15                        | 復元・保存・別タブ       | AuthSession、AuthStore                                         | AccountPersistence、isResolved、storageStatus          | 復元・別タブ通知 |
-| 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9 | 個別・全件ログアウト     | AuthStore、AccountChooser、VerifyEmail                         | signOut、signOutAccount、signOutAll                    | ログアウト       |
-| 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9 | 未選択と到達制御         | AuthGate、authGuard、AuthStore                                 | AuthStage、AuthGuardDecision                           | ログアウト・復帰 |
-| 7.1–7.21                                    | 公開面・UI・組み込み     | index、5画面、AddAccount、AccountChooser、README、ショーケース | AuthStore、コンポーネント props                        | 切り替え         |
+| Requirement                                 | Summary                  | Components                                        | Interfaces                                             | Flows            |
+| ------------------------------------------- | ------------------------ | ------------------------------------------------- | ------------------------------------------------------ | ---------------- |
+| 1.1, 1.2, 1.3, 1.4, 1.5                     | 複数の保持と一覧         | AuthStore                                         | AccountSummary、accounts、activeId                     | 復元・一覧       |
+| 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8      | 追加・重複・登録・再設定 | AuthStore、AddAccount、SignIn、SignUp             | signIn、signUp、cancelPendingSignIn、sendPasswordReset | サインイン       |
+| 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7           | 切り替えと競合           | AuthStore、SlotStore、VerifyEmail、PasswordChange | selectAccount、user、operation                         | 切り替え         |
+| 4.1–4.12, 4.14, 4.15                        | 復元・保存・別タブ       | AuthSession、AuthStore                            | AccountPersistence、isResolved、storageStatus          | 復元・別タブ通知 |
+| 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9 | 個別・全件ログアウト     | AuthStore、VerifyEmail                            | signOut、signOutAccount、signOutAll                    | ログアウト       |
+| 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9 | 未選択と到達制御         | AuthGate、authGuard、AuthStore                    | AuthStage、AuthGuardDecision                           | ログアウト・復帰 |
+| 7.1–7.21                                    | 公開面・UI・組み込み     | index、5画面、AddAccount、README、ショーケース    | AuthStore、コンポーネント props                        | 切り替え         |
 
 要件 4.13 は欠番（従来方式からの引き継ぎを行わない）。
 
@@ -254,7 +250,6 @@ sequenceDiagram
 | AuthSession          | components          | ブラウザ保存とタブ通知を管理する描画なしの部品   | 4、7             | AuthStore（P0）、Web Storage（P0）                     |
 | 5画面                | components          | サインイン・登録・確認待ち・変更・再設定         | 2、3、5、7       | AuthStore（P0）、svelte-ui（P1）                       |
 | AddAccount           | components          | 追加認証の中身を表示する                         | 2、7             | AuthStore（P0）、svelte-ui（P1）                       |
-| AccountChooser       | components          | 任意利用の選択・ログアウト内容                   | 1、5、6、7       | AuthStore（P0）、svelte-ui（P1）                       |
 | AuthGate / authGuard | components / models | 未選択を含む到達判定と保護内容の抑止             | 6                | AuthStore（P0）、SvelteKit（P0）                       |
 
 ### ストア
@@ -276,7 +271,9 @@ sequenceDiagram
 - `signIn`・`signUp` は、どの画面から呼ばれても新しいスロットで認証する。成功したら一覧を確定し、土台へ複製してから選択し、明示的な未選択を上書きして最後に開いた ID を保存する。失敗・取消ではスロットを破棄し、元の選択を保つ。
   - 認証に成功した後で土台への複製だけが失敗した場合は、そのアカウントを一覧に残し（ログイン状態は実際に保持している）、選択は元に戻して失敗を返す。利用者は一覧から選び直せる（実装時の判断）。
 - 同じタブでのサインインの意図は `signIn`・`signUp` の呼び出しそのものが示す。別タブで追加されたスロットは一覧へ加えるだけで、現在のタブの選択を変えない。
-- ログアウトは、どの経路（`signOut`・`signOutAccount`・`signOutAll`・別タブ・失効）で観測しても同じ状態更新を行う。該当アカウントを一覧から外してスロットを破棄し、選択中なら土台をサインアウトして明示的な未選択を保存し、最後に開いた ID が一致すれば消す。他のアカウントを自動選択しない。
+- ログアウトは、どの経路（`signOut`・`signOutAccount`・`signOutAll`・別タブ・失効）で観測しても同じ状態更新を行う。該当アカウントを一覧から外してスロットを破棄し、選択中なら土台をサインアウトして明示的な未選択を保存し、最後に開いた ID が一致すれば消す。2件以上残れば自動選択しない。
+- **保持アカウントが1件だけなら、未選択にせずそれを選ぶ**（依頼者の判断、2026-10-27）。起動時の選択（タブの記録・最後に開いた記録で決まらない場合、明示的な未選択を引き継いだ場合を含む）、使用中アカウントのログアウト・失効の後、別タブから1件目が加わったときに適用し、選んだら選択を記録する。`signOutAll` の途中では選ばず、終わって1件だけ残ったら選ぶ（途中で選ぶと複製が無駄に走る）。単一アカウント指定の「保持していれば常に選ぶ」もこの規則に含まれる。
+  - 残すアカウントへ複製し終えるまで（目標がある間）は、段階を `account-unselected` ではなく `unresolved` とし、選択ダイアログを一瞬出さない。
 - 追加・選択・ログアウトは同時に1件だけ受け付け、競合は `busy` で返す。
 - **単一アカウント指定（`multiAccount: false`）では保持アカウントを最大1件にする。**
   - 保持アカウントがあれば、それを常に選択中とする。タブ内の選択記録と最後に開いた ID は参照しない。選択中アカウントを失えば `signed-out` になり、`account-unselected` は現れない。
@@ -289,7 +286,7 @@ sequenceDiagram
 - 対象指定ログアウトはそのスロットの Auth に直接行い、Firebase の失敗を握りつぶさない。全件ログアウトは成功したスロットだけを除き、失敗したスロットと理由を返す。
 - `stop()` は購読を解除しスロットの App を破棄する。ログアウトはしない。画面が閉じただけでログイン状態を失わせない。
 
-**Dependencies**: Inbound — 5画面、AddAccount、AccountChooser、markn メニュー、AuthGate、AuthSession（P0）。Outbound — 土台の Auth、SlotStore、保存アダプタ（P0）。
+**Dependencies**: Inbound — 5画面、AddAccount、markn メニュー、AuthGate、AuthSession（P0）。Outbound — 土台の Auth、SlotStore、保存アダプタ（P0）。
 
 **Contracts**: Service ✓ / State ✓
 
@@ -460,7 +457,7 @@ interface AuthSessionProps {
 #### 5画面
 
 - 受け取る型は従来どおり `AuthBaseProps.store: AuthStore` で、その中身が一本化したストアになる。
-- `SignIn`・`SignUp` は `store.signIn`・`store.signUp` を呼ぶ。新しいスロットに入るため、他の保持アカウントのログイン状態を上書きしない。結果の失敗は `accountErrorMessageOf` で文言へ写す。`error.kind === 'auth'` は既存の文言へ、`busy`・`limit-reached`・`not-found`・`not-signed-in` はそれぞれ専用の文言へ、それ以外は汎用の失敗文言へ写す。当初は認証以外をすべて汎用の文言にする想定だったが、`AddAccount`・`AccountChooser` と写像を共用し、処理中・上限を利用者が区別できるようにした（実装時の判断）。
+- `SignIn`・`SignUp` は `store.signIn`・`store.signUp` を呼ぶ。新しいスロットに入るため、他の保持アカウントのログイン状態を上書きしない。結果の失敗は `accountErrorMessageOf` で文言へ写す。`error.kind === 'auth'` は既存の文言へ、`busy`・`limit-reached`・`not-found`・`not-signed-in` はそれぞれ専用の文言へ、それ以外は汎用の失敗文言へ写す。当初は認証以外をすべて汎用の文言にする想定だったが、`AddAccount` や組み込み側のメニューと写像を共用し、処理中・上限を利用者が区別できるようにした（実装時の判断）。
 - `VerifyEmail`・`PasswordChange` は選択中アカウントに適用する。表示中に `store.activeId` が変わったら、入力・送信結果・完了表示を破棄して表示し直す（要件 7.18）。画面の内容を `activeId` で鍵付けして作り直す形で実装し、組み込み側に `{#key}` を書かせない。
 - 作り直しだけでは、破棄した画面で走っていた非同期処理（送信・確認状態の定期的な取り直し）の完了は止まらない。画面は処理の開始時に `activeId` を控え、完了時に「画面が破棄されている」か「`activeId` が控えた値と異なる」なら、表示の更新も `onCompleted` の呼び出しも行わない。定期的な取り直しは画面の破棄で止める（要件 3.6、7.18）。
 - `VerifyEmail` のサインアウトは `store.signOut()`（選択中アカウントのログアウト）になる。
@@ -473,46 +470,45 @@ interface AuthSessionProps {
 - 自由登録が許される場合は登録の入力へ、パスワード再設定を求める場合は再設定の入力へ、同じ内容領域内で切り替える。成功時はアカウントを含む通知を組み込み側へ返し、閉じるかどうかは組み込み側が決める。
 - 認証操作はストアへ委譲する。`SignIn` と同じ `store.signIn` を使い、`SignIn` のページ遷移は使わない。
 - 取消時は `cancelPendingSignIn()` を呼んで進行中の試行を無効化し、`onCancel` で組み込み側へ通知する。
+- 送信・取りやめのボタンは、ダイアログの作法に従って組み込み側がフッターに置けるようにする（markn の依頼、2026-10-27）。`actions={false}` で中に描かず、外の送信ボタンは `form={id}` でフォームを送り、送信中と表示は `bind:isSubmitting`・`bind:mode` で読む。取りやめは部品の `cancel()` を呼ぶ。ストアの `cancelPendingSignIn()` だけでは部品が送信中のまま残るため、部品側の口にした。ストアで取りやめられた結果（`cancelled`）は失敗として表示しない。
+- 再設定・登録への導線は `passwordReset`・`signUp` で別々に出し分ける。別のアカウントでサインインする場では、再設定は要るが登録は要らない、という依頼者の判断による。
 
 **Dependencies**: Inbound — markn のダイアログまたはアプリのページ（P0）。Outbound — AuthStore、文言解決、svelte-ui（P0/P1）。
 
 **Contracts**: State ✓
 
 ```typescript
+type AddAccountMode = 'sign-in' | 'sign-up' | 'password-reset';
+
 interface AddAccountProps {
 	readonly store: AuthStore;
 	readonly messages?: AuthMessagesOverride;
 	readonly onCompleted?: (account: AccountSummary) => void;
-	readonly onCancel?: () => void;
+	readonly onCancel?: () => void; // 中の取りやめのボタンが押されたとき
+	readonly passwordReset?: boolean; // 再設定への導線。既定は出す
+	readonly signUp?: boolean; // 登録への導線。既定は出す（自由登録の可否とも掛け合わせる）
+	readonly actions?: boolean; // 取りやめ・送信のボタンを中に描くか。既定は描く
+	readonly id?: string; // フォームの id。外の `<button type="submit" form={id}>` から送信する
+	isSubmitting?: boolean; // $bindable。送信中
+	mode?: AddAccountMode; // $bindable。いまの表示。'sign-in' を書けばサインインへ戻る
 }
+// 公開するメソッド: cancel()。送信中の試行を無効にする。中のボタンを描かない組み込み側が、閉じるときに呼ぶ
 ```
 
-#### AccountChooser
+#### アカウントの一覧・選択の表示（ライブラリでは持たない）
 
-**Responsibilities & Constraints**
+当初は任意利用の `AccountChooser`（一覧・切り替え・個別/全件ログアウト・追加の要求）を提供したが、削除した（2026-10-27、依頼者の判断）。
 
-- アカウントの一覧、選択中表示、直接切り替え、個別・全件ログアウト、追加要求を表す中身のみの任意コンポーネント。markn は同じストアを使って独自メニューと選択ダイアログを実装してよい。
-- キーボード操作可能な svelte-ui 部品を使い、選択中かどうかをテキストまたはアクセシブルな状態でも伝える。操作中は競合する入力を止め、失敗時は対象が分かる案内を表示する。
-- `storageStatus='unavailable'` の場合は再読み込み後にログイン状態や選択を復元できない可能性を示す。
-
-**Dependencies**: Inbound — アプリのページまたはダイアログ（P0）。Outbound — AuthStore、svelte-ui、文言解決（P0/P1）。
-
-**Contracts**: State ✓
-
-```typescript
-interface AccountChooserProps {
-	readonly store: AuthStore;
-	readonly messages?: AuthMessagesOverride;
-	readonly onAddRequested?: () => void;
-}
-```
+- 中身はストアの `accounts`・`activeId`・`selectAccount`・`signOutAccount` を呼ぶボタンを並べるだけで、組み込み側が数行で書ける。
+- どの操作をどう並べるかは使う画面ごとに違う。唯一の組み込み先の markn から「選ぶだけ」「サインアウトだけ」と用途別の出し分けを求められ、設定が増え始めた。アプリ固有の判断をライブラリへ持ち込む兆候であり、markn も自前で作ることにした。
+- 一覧・選択・ログアウトの状態と操作、失敗の文言（`accountErrorMessageOf`）は引き続きストアと公開面で提供する。
 
 #### AuthGate と authGuard
 
 **Responsibilities & Constraints**
 
 - `resolveAuthGuard` は段階・現在の経路・経路設定・保持している戻り先だけから判定する純関数のまま保つ。`account-unselected` の判定と、判定結果 `select` を加える。
-- 選択ダイアログや `AccountChooser` は、ガードの子ではなく根レイアウトでガードと並ぶ位置に置く。保護された子が隠れていても操作できる。
+- 組み込み側の選択ダイアログは、ガードの子ではなく根レイアウトでガードと並ぶ位置に置く。保護された子が隠れていても操作できる。
 
 **到達判定の表**
 
@@ -528,6 +524,13 @@ interface AccountChooserProps {
 - `account-unselected` でサインイン・登録・再設定を許すのは、サインインが常に新しいスロットに入り、他の保持アカウントを上書きしないためである。ここでサインインすればそのアカウントが選択され、`ready` になって戻り先へ進む（要件 6.1、6.7）。
 - `select` は遷移せず、子を描画しない（`pending` も出さない）。戻り先を保持する。選択後に `ready` になれば、同じ経路でそのまま子を描画する。
 - 選択後に保護された経路へ留まった場合、保持した戻り先は次の振り替えで上書きされるまで残る。使われるのは `ready` で認証経路を開いたときだけで、行き先は直前まで居た保護された経路であるため害はない。
+- **戻り先は、保持したときのアカウントに結びつける（要件 6.10、6.11）。** 保持する値は経路と持ち主の uid の組（`HeldReturnTo`）とする。
+  - 持ち主は、使用中のアカウントが離れたときに開いていた経路を保持する場合だけ、そのアカウントの uid とする。到達ガードは最後に内容を見せた経路と uid を覚えておき（メモリのみ）、保持する経路がそれと同じなら持ち主にする。それ以外（初回・全件ログアウトの後に開いた経路、再読み込みの後）は持ち主なし（`null`）で、どのアカウントにも使う。
+  - `ready` で戻り先を使うのは、持ち主なしか、持ち主が使用中のアカウントの uid と一致するときだけ。一致しなければ既定の行き先へ進め、戻り先を破棄する。
+  - 選択の解除の後に同じ経路のまま別のアカウントが選ばれた場合は、その経路が別のアカウントの戻り先であるため、`ready` でも留まらず既定の行き先へ振り替える。
+  - 1件だけ残ったアカウントが自動で選ばれた場合は、未選択を経ないため戻り先を保持する機会が無い。到達ガードは最後に内容を見せた経路と uid を覚えており、同じ経路のまま別のアカウントになり、かつ前のアカウントがもう保持されていなければ、離れたものとして既定の行き先へ振り替える。前のアカウントを保持したままの切り替え（利用者がメニューから選んだ）は留める。
+  - 最後に見せた経路は、内容を見せた（`allow`）ときだけ記録する。判定待ちの間に消すと、離れたアカウントが分からなくなる。
+  - 持ち主を slot ID ではなく uid にするのは、同じアカウントでサインインし直すとスロットが作り直されるためである。markn からの依頼（2026-10-27）による。
 - `email-unverified` は選択中アカウントだけで決まり、他のアカウントの確認状態を使わない（要件 6.8）。確認待ちの経路でも、ガードの外の選択 UI と `AddAccount` から別のアカウントへ切り替え・追加できる（要件 6.5）。
 - ページに置いた `AddAccount` は保護された経路の子であるため、`account-unselected` の間は隠れる。この間の追加は、ガードの外に置いた選択 UI・ダイアログか、サインイン経路から行う。
 - 選択ダイアログをモーダルで出す組み込み先は、サインイン・登録・再設定の経路では出さない。出すとその経路のサインインの入力を塞ぐ（ショーケースはこの形にしている）。
@@ -576,7 +579,7 @@ type AuthGuardDecision =
 
 - **Unit**: 要件 1–5 の一覧重複、選択の原子性、対象固定、競合、個別・全件ログアウトの部分成功、保存記録の検証。要件 4.11–4.12 はタブ内選択の初期コピー、記録なしからの最後に開いた ID の採用、コピーされた明示的な未選択、無効な ID の4ケース。要件 4.14・5.9 は、どの画面から行ったサインイン・ログアウトも同じ状態更新になること。到達判定は上の表の全セルを `resolveAuthGuard` で確認する。土台の更新の待ち行列は、確認状態の取り直し・パスワード変更の完了と切り替えが交差する順序（完了が切り替えの前・途中・後）で、土台と `activeId` が常に切り替え先に揃うことを確認する（要件 3.2、3.6）。開始時の失敗は、土台の切り替えの失敗で `startError` が入り判定待ちのまま止まること、複数アカウント指定で一部のスロットの失敗が `restoreFailures` に入り他のアカウントは使えること、単一アカウント指定でスロットの復元・複製の失敗が `startError` になり未選択へ進まないことを確認する（要件 4.4、7.1、7.5）。切り替えの複製が失敗したら目標が元に戻り、その後の再複製が失敗した切り替えを実行しないこと、その間に届いたログアウトの目標は戻されないことを確認する（要件 3.4、7.12）。単一アカウント指定では、保持アカウントがある間のサインインが `limit-reached` になること（要件 7.19）、2件になったら後からサインインした方だけが残ること（要件 7.20）、選択中アカウントを失うと `signed-out` になることを確認する。
 - **Integration（Auth / Firestore エミュレータ）**: 2つのスロットへの同時ログイン、片方のみのログアウト。再読み込み後の復元は、Node の Auth がメモリにしか保存しないため E2E で確かめる。選択を切り替えると、土台の App の同じ Firestore インスタンスがセキュリティルール上も切り替え先のユーザーとして扱われること（要件 3.2、7.7）。土台のサインアウトでスロットのログイン状態が残ること。パスワード変更後に土台の複製が使えること。開始時、土台の Auth に何が入っていても、選択中スロットの複製か空になること。Firebase の実挙動に依存する箇所はモックの成功だけで判断しない。
-- **Component**: `AddAccount` をページとダイアログの内容領域の両方へ置き、登録・再設定・取消・完了通知を確認する。`AccountChooser` のキーボード操作、選択中表示、処理中表示を確認する。`VerifyEmail`・`PasswordChange` で表示中に選択を変え、途中状態が破棄されること、切り替え前に始めた処理が後から完了しても表示が変わらず `onCompleted` が呼ばれないことを確認する（要件 3.6、7.18）。
+- **Component**: `AddAccount` をページとダイアログの内容領域の両方へ置き、登録・再設定・取消・完了通知を確認する。`VerifyEmail`・`PasswordChange` で表示中に選択を変え、途中状態が破棄されること、切り替え前に始めた処理が後から完了しても表示が変わらず `onCompleted` が呼ばれないことを確認する（要件 3.6、7.18）。
 - **E2E**: markn のメニューを模したショーケースから A/B の追加・直接切り替え・使用中 A のログアウト・残る B の選択・全件ログアウト・再読み込みを操作する。2つのタブで別々のアカウントを選び、一方の切り替え・ログアウトが他方の選択と土台の Auth に影響しないこと（要件 4.8）。未選択のままサインイン経路でサインインすると選択されて戻り先へ進むこと、`VerifyEmail` からのログアウトで選択が解除されること。元タブから開いた新しいタブと独立して開いた新しいタブの両方で前回のアカウントを初期選択すること。選択ダイアログ表示中に保護された内容が見えないこと、選択後に正しいメールアドレスが見えること。単一アカウント指定の構成（選択 UI なし）でサインイン・確認・ログアウトが通り、どの手順でも保護された内容が隠れたまま行き詰まらないこと（要件 7.1）。新しいタブ・再読み込み・別タブでのログアウトを経ても `account-unselected` が現れないこと。
 
 ## 組み込み側へ返す事項（要件 7.9）

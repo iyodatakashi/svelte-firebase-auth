@@ -8,7 +8,7 @@ A SvelteKit library for Firebase Authentication with email and password. It prov
 - **Route guarding** — Redirects according to the authentication stage. The host app only needs to place one guard in the root layout
 - **Return path after sign-in** — After signing in, the user proceeds to the route they were trying to open
 - **Error vocabulary** — Firebase error codes are folded into the granularity at which the guidance to the user differs. **Nothing is thrown; failures are returned as values**
-- **Account parts** — Content-only components for adding an account and for choosing one. Where they appear (a page, a dialog, your own menu) is up to the host app
+- **Adding an account** — A content-only component for signing in to another account. Where it appears (a page, a dialog) is up to the host app
 - **Message overrides** — Japanese and English are bundled, and the host app can override individual messages
 
 ## Installation
@@ -186,6 +186,7 @@ When a signed-out user opens a protected route, **that route is kept as the retu
 - It is kept **per tab** and survives reloads and route changes. **It is not lost when passing through verification pending**
 - **Only root-relative paths** are kept. Values pointing outside (including `//evil.example`) are not used, and the user goes to `afterSignIn` instead
 - Authentication routes themselves are never used as the return path
+- **A return path belongs to the account that left it.** When the account in use signs out or is deselected while a route is open, that route is kept for that account only: if the same account (by `uid`) becomes ready again it returns there; if another account becomes ready it goes to `afterSignIn` instead, even when it was selected on the same route (including when it was the only one left and was selected automatically). Switching accounts yourself while the previous one stays signed in keeps the route. A route opened while no account is in use (first visit, after signing out of every account, or after a reload) is kept for any account, so opening a shared link and then signing in still works
 
 The showcase in `src/routes/` is a working example of setting up routes and using `AuthGate` (**it is not part of the package**).
 
@@ -231,24 +232,59 @@ The store exposes everything a menu needs, so the host app does not track accoun
 </Dialog>
 ```
 
-**`AddAccount` is content only.** It has the email and password fields, sign-up and password reset within the same area, and error messages, but no dialog frame, heading, or open/close. Put it in a dialog or on a page. `onCompleted(account)` receives the account that was added and selected; `onCancel()` is called when the user cancels, and an in-flight attempt is ignored even if it succeeds later.
+**`AddAccount` is content only.** It has the email and password fields, sign-up and password reset within the same area, and error messages, but no dialog frame, heading, or open/close. Pass `passwordReset={false}` or `signUp={false}` to hide the link to that view (sign-up also follows `selfRegistration`).
 
-#### After signing out of the account in use
+To put the submit and cancel buttons in your dialog's footer, pass `actions={false}` and an `id`, then submit with `<button type="submit" form={id}>`. Read `bind:isSubmitting` for the button's loading state and `bind:mode` (`'sign-in'`, `'sign-up'`, or `'password-reset'`) for its label; write `mode = 'sign-in'` to go back to sign-in. Call `cancel()` on the component (via `bind:this`) when the dialog closes, so an in-flight attempt is ignored.
 
-**The remaining accounts are not selected automatically.** The stage becomes `'account-unselected'` and `AuthGate` hides the protected content without navigating. Show a dialog to choose an account, **outside `AuthGate`** (for example next to it in the root layout), so the guard does not hide it.
-
-```svelte
+````svelte
+<Dialog
+	bind:this={addDialog}
+	ariaLabel="Sign in to another account"
+	onClose={() => addAccount?.cancel()}
+>
+	<AddAccount
+		{store}
+		bind:this={addAccount}
+		bind:isSubmitting
+		bind:mode
+		id="add-account"
+		actions={false}
+	/>
+	{#snippet footer()}
+		<Button onclick={() => addDialog?.close()}>Cancel</Button>
+		<Button type="submit" form="add-account" variant="filled" loading={isSubmitting}>
+			{mode === 'password-reset'
+				? 'Send a reset email'
+				: mode === 'sign-up'
+					? 'Create account'
+					: 'Sign in'}
+		</Button>
+	{/snippet}
+</Dialog>
+``` Put it in a dialog or on a page. `onCompleted(account)` receives the account that was added and selected;
+`onCancel()` is called when the user cancels, and an in-flight attempt is ignored even if it succeeds
+later. #### After signing out of the account in use **If exactly one account remains, it becomes the account
+in use.** A choice only makes sense with two or more, so the same applies at startup: when only one account
+is kept, it is selected even if the tab had no account selected. **If two or more remain, none is selected
+automatically.** The stage becomes `'account-unselected'` and `AuthGate` hides the protected content without
+navigating. Show a dialog to choose an account, **outside `AuthGate`** (for example next to it in the
+root layout), so the guard does not hide it. The library does not ship this list: build it from `store.accounts`
+and `store.selectAccount`, as your screen needs. ```svelte
 <AuthGate {store} {pending}>
 	{@render children()}
 </AuthGate>
 
-<!-- Open it while store.stage === 'account-unselected' -->
+<!-- Open it while store.stage === 'account-unselected' && store.operation === null -->
 <Dialog bind:this={chooserDialog} ariaLabel="Choose an account" closeIfClickOutside={false}>
-	<AccountChooser {store} onAddRequested={() => addDialog?.open()} />
+	{#each store.accounts as account (account.id)}
+		<Button onclick={() => store.selectAccount(account.id)} disabled={store.operation !== null}>
+			{account.email}
+		</Button>
+	{/each}
 </Dialog>
-```
+````
 
-`AccountChooser` is an optional, content-only list: it switches on selection, signs out of one or all accounts, marks the account in use with text (not color alone), disables its controls while an operation runs, and names the account when an operation fails. You can build the same with the store instead. When no account remains, the stage becomes `'signed-out'` and `AuthGate` redirects to sign-in.
+Open the dialog only while `store.operation` is `null`: signing out of every account passes through `'account-unselected'` for a moment. When no account remains, the stage becomes `'signed-out'` and `AuthGate` redirects to sign-in.
 
 While unselected, the sign-in, sign-up, and password reset routes stay open: signing in there selects the new account and returns to the kept return path. If you show the chooser as a modal, do not show it on those routes.
 
@@ -257,7 +293,7 @@ While unselected, the sign-in, sign-up, and password reset routes stay open: sig
 - Sign-in states are kept by the browser and **restored after reloads and restarts**
 - **Each tab has its own account in use.** Switching or signing out in one tab does not change the account in use in another (a sign-out does remove that account everywhere)
 - A new tab opens with the account of the tab it was opened from, or otherwise with the account last opened in this browser. A tab that had explicitly no account selected stays unselected
-- If the browser storage is not available, `store.storageStatus` is `'unavailable'`: everything works in the current tab, but nothing may be restored after a reload. `AccountChooser` shows a notice
+- If the browser storage is not available, `store.storageStatus` is `'unavailable'`: everything works in the current tab, but nothing may be restored after a reload. Show a notice if that matters to your users
 
 ### Data access and switching accounts
 
@@ -463,7 +499,7 @@ The following are **the host app's responsibility**.
 
 - **Firebase initialization** — The `Auth` instance is passed in
 - **The route pages themselves** — The library only receives route values; the host app provides the `+page.svelte` files
-- **Your user menu and the dialogs around `AddAccount` / `AccountChooser`** — placement, opening, and closing
+- **Your user menu, the account chooser, and the dialog around `AddAccount`** — content, placement, opening, and closing
 - **Switching your data on account changes** — re-subscribing, discarding displayed data, and handling unsaved or unsent data
 - **Firestore and access control**
 - **Server-side session verification** — Requires the Admin SDK
