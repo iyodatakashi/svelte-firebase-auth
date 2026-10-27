@@ -25,6 +25,7 @@ export type {
 	AccountOperationError,
 	AccountResult,
 	AccountSummary,
+	AddAccountMode,
 	AddAccountProps,
 	AuthBaseProps,
 	AuthConfig,

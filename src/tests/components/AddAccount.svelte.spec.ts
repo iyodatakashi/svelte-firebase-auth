@@ -4,19 +4,25 @@ import { userEvent } from 'vitest/browser';
 import { goto } from '$app/navigation';
 import AddAccount from '$lib/components/AddAccount.svelte';
 import { jaMessages } from '$lib/messages/ja';
-import type { AccountResult, AccountSummary } from '$lib/models/auth/auth.types';
+import type { Component } from 'svelte';
+import type { AccountResult, AccountSummary, AddAccountProps } from '$lib/models/auth/auth.types';
 import AddAccountInDialog from './fixtures/AddAccountInDialog.svelte';
+import AddAccountWithFooter from './fixtures/AddAccountWithFooter.svelte';
 import {
 	authFailureOf,
 	failureOf,
 	fakeAccount,
 	fakeStore,
+	operationFailureOf,
 	type FakeStoreOptions
 } from '../support/fakeStore.svelte';
 
 const added = fakeAccount({ id: 'account-2', uid: 'uid-2', email: 'added@example.com' });
 
-const setup = async (options: FakeStoreOptions = {}, placement = AddAccount) => {
+const setup = async (
+	options: FakeStoreOptions = {},
+	placement: Component<AddAccountProps> = AddAccount
+) => {
 	const { store } = fakeStore(options);
 	vi.mocked(store.signIn).mockResolvedValue({ ok: true, value: added });
 	vi.mocked(store.signUp).mockResolvedValue({ ok: true, value: added });
@@ -192,5 +198,115 @@ describe('AddAccount の配置 — 要件 7.15, 7.16（multi-account-auth）', (
 		await fillAndSubmit(screen);
 
 		await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledWith(added));
+	});
+});
+
+describe('導線の出し分け — 要件 2.6, 2.8, 7.15（multi-account-auth）', () => {
+	it('登録の導線だけを出さない指定では、再設定の導線を残す', async () => {
+		const { store } = fakeStore({ canSelfRegister: true });
+		const screen = await render(AddAccount, { props: { store, signUp: false } });
+
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.goToPasswordReset }))
+			.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.goToSignUp }))
+			.not.toBeInTheDocument();
+	});
+
+	it('再設定の導線だけを出さない指定では、登録の導線を残す', async () => {
+		const { store } = fakeStore({ canSelfRegister: true });
+		const screen = await render(AddAccount, { props: { store, passwordReset: false } });
+
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.goToPasswordReset }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.goToSignUp }))
+			.toBeInTheDocument();
+	});
+});
+
+describe('送信と取りやめを組み込み側に置く — 要件 7.15, 7.16（multi-account-auth）', () => {
+	const setupFooter = async () => {
+		const { store } = fakeStore();
+		vi.mocked(store.signIn).mockResolvedValue({ ok: true, value: added });
+		const onCompleted = vi.fn();
+		const screen = await render(AddAccountWithFooter, { props: { store, onCompleted } });
+		await screen.getByLabelText(jaMessages.email).fill('added@example.com');
+		await screen.getByLabelText(jaMessages.password).fill('secret');
+		return { screen, store, onCompleted };
+	};
+
+	it('ボタンを描かない指定では、取りやめと送信のボタンを持たない', async () => {
+		const { screen } = await setupFooter();
+		for (const name of [jaMessages.cancel, jaMessages.signInSubmit]) {
+			await expect
+				.element(screen.getByRole('button', { name, exact: true }))
+				.not.toBeInTheDocument();
+		}
+	});
+
+	it('組み込み側の送信ボタンからフォームを送信できる', async () => {
+		const { screen, store, onCompleted } = await setupFooter();
+		await screen.getByRole('button', { name: '送る' }).click();
+
+		await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledWith(added));
+		expect(store.signIn).toHaveBeenCalledWith('added@example.com', 'secret');
+	});
+
+	it('送信中を組み込み側へ知らせる', async () => {
+		const { screen, store } = await setupFooter();
+		vi.mocked(store.signIn).mockImplementationOnce(() => new Promise(() => {}));
+		await screen.getByRole('button', { name: '送る' }).click();
+
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeDisabled();
+	});
+
+	it('組み込み側から取りやめると、送信中を解き、後から返った結果を反映しない', async () => {
+		const { screen, store, onCompleted } = await setupFooter();
+		let complete: (result: AccountResult<AccountSummary>) => void = () => {};
+		vi.mocked(store.signIn).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		await screen.getByRole('button', { name: '送る' }).click();
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeDisabled();
+
+		await screen.getByRole('button', { name: '閉じる' }).click();
+
+		expect(store.cancelPendingSignIn).toHaveBeenCalledOnce();
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeEnabled();
+		complete({ ok: true, value: added });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(onCompleted).not.toHaveBeenCalled();
+	});
+
+	it('ストアの取りやめで返った結果は、失敗として示さない', async () => {
+		const { screen, store } = await setupFooter();
+		vi.mocked(store.signIn).mockResolvedValueOnce(operationFailureOf({ kind: 'cancelled' }));
+		await screen.getByRole('button', { name: '送る' }).click();
+
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeEnabled();
+		await expect.element(screen.getByRole('alert')).not.toBeInTheDocument();
+	});
+});
+
+describe('表示の切り替えを組み込み側から扱う — 要件 2.8（multi-account-auth）', () => {
+	it('いまの表示を組み込み側へ知らせ、組み込み側からサインインへ戻せる', async () => {
+		const { store } = fakeStore();
+		const screen = await render(AddAccountWithFooter, { props: { store } });
+		await expect.element(screen.getByTestId('mode')).toHaveTextContent('sign-in');
+
+		await screen.getByRole('button', { name: jaMessages.goToPasswordReset }).click();
+		await expect.element(screen.getByTestId('mode')).toHaveTextContent('password-reset');
+		await screen.getByLabelText(jaMessages.email).fill('added@example.com');
+		await screen.getByRole('button', { name: '送る' }).click();
+		await expect.element(screen.getByText(jaMessages.passwordResetSent)).toBeInTheDocument();
+
+		await screen.getByRole('button', { name: '戻す' }).click();
+
+		await expect.element(screen.getByTestId('mode')).toHaveTextContent('sign-in');
+		await expect.element(screen.getByLabelText(jaMessages.password)).toBeInTheDocument();
+		await expect.element(screen.getByText(jaMessages.passwordResetSent)).not.toBeInTheDocument();
 	});
 });

@@ -3,23 +3,46 @@
 	import { accountErrorMessageOf } from '$lib/messages/accountErrorMessage';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
-	import type { AddAccountProps } from '$lib/models/auth/auth.types';
+	import { untrack } from 'svelte';
+	import type { AddAccountMode, AddAccountProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, onCompleted, onCancel }: AddAccountProps = $props();
+	/**
+	 * 表示（サインイン・登録・再設定）は同じ領域の中で切り替える。ページの遷移は持たない
+	 * （置く場所と開閉は組み込み側が決める）。組み込み側は `bind:mode` で読み書きできる
+	 */
+	let {
+		store,
+		messages: overrides,
+		onCompleted,
+		onCancel,
+		passwordReset = true,
+		signUp = true,
+		actions = true,
+		id,
+		isSubmitting = $bindable(false),
+		mode = $bindable<AddAccountMode>('sign-in')
+	}: AddAccountProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
-	/** 同じ領域の中で切り替える。ページの遷移は持たない（置く場所と開閉は組み込み側が決める） */
-	type Mode = 'sign-in' | 'sign-up' | 'password-reset';
-
-	let mode = $state<Mode>('sign-in');
 	let email = $state('');
 	let password = $state('');
 	let errorMessage = $state<string | null>(null);
 	let hasRequestedReset = $state(false);
-	let isSubmitting = $state(false);
 	/** 送信のたびに替わる。取りやめた送信の結果を表示に反映しない */
 	let attempt: object | null = null;
+	/** 表示している切り替え。中の導線からでも組み込み側からでも、替わったら途中の結果を捨てる */
+	let shownMode = untrack(() => mode);
+
+	$effect.pre(() => {
+		if (mode === shownMode) {
+			return;
+		}
+		shownMode = mode;
+		password = '';
+		errorMessage = null;
+		hasRequestedReset = false;
+	});
 
 	const submitLabel = $derived(
 		mode === 'sign-in'
@@ -29,11 +52,12 @@
 				: messages.passwordResetSubmit
 	);
 
-	const switchTo = (next: Mode) => {
+	const canSignUp = $derived(signUp && store.canSelfRegister);
+	/** サインインの表示では、出す導線が1つも無ければ導線のまとまりごと出さない */
+	const hasLinks = $derived(mode !== 'sign-in' || passwordReset || canSignUp);
+
+	const switchTo = (next: AddAccountMode) => {
 		mode = next;
-		password = '';
-		errorMessage = null;
-		hasRequestedReset = false;
 	};
 
 	const submit = async (event: SubmitEvent) => {
@@ -69,6 +93,10 @@
 			return;
 		}
 		isSubmitting = false;
+		// ストアで取りやめられた試行は、失敗として示さない
+		if (!result.ok && result.error.kind === 'cancelled') {
+			return;
+		}
 		if (result.ok) {
 			// 入力したパスワードを残さない
 			password = '';
@@ -78,11 +106,19 @@
 		errorMessage = accountErrorMessageOf(result.error, messages, mode);
 	};
 
-	const cancel = () => {
+	/**
+	 * 取りやめる。送信中の試行を無効にし、後から成功が返っても反映しない。
+	 * 中のボタンを描かない組み込み側は、ダイアログを閉じるときなどにこれを呼ぶ
+	 */
+	export const cancel = (): void => {
 		attempt = null;
 		isSubmitting = false;
 		// Firebase の要求は中断できない。ストアに試行を無効にさせ、後から成功しても反映させない
 		store.cancelPendingSignIn();
+	};
+
+	const cancelFromButton = () => {
+		cancel();
 		onCancel?.();
 	};
 </script>
@@ -94,7 +130,7 @@
 		</div>
 	{/if}
 
-	<form class="add-account__form" onsubmit={submit} novalidate>
+	<form {id} class="add-account__form" onsubmit={submit} novalidate>
 		<div class="add-account__fields">
 			<Input
 				id="add-account-email"
@@ -132,31 +168,37 @@
 			<p class="add-account__error" role="alert">{errorMessage}</p>
 		{/if}
 
-		<!-- 取りやめが左、実行が右。取りやめは送信中も押せる -->
-		<div class="add-account__actions">
-			<Button onclick={cancel}>{messages.cancel}</Button>
-			<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
-				{submitLabel}
-			</Button>
-		</div>
+		<!-- 取りやめが左、実行が右。取りやめは送信中も押せる。組み込み側が外に置くときは描かない -->
+		{#if actions}
+			<div class="add-account__actions">
+				<Button onclick={cancelFromButton}>{messages.cancel}</Button>
+				<Button type="submit" variant="filled" loading={isSubmitting} disabled={isSubmitting}>
+					{submitLabel}
+				</Button>
+			</div>
+		{/if}
 	</form>
 
-	<div class="add-account__links">
-		{#if mode === 'sign-in'}
-			<Button fullWidth onclick={() => switchTo('password-reset')} disabled={isSubmitting}>
-				{messages.goToPasswordReset}
-			</Button>
-			{#if store.canSelfRegister}
-				<Button fullWidth onclick={() => switchTo('sign-up')} disabled={isSubmitting}>
-					{messages.goToSignUp}
+	{#if hasLinks}
+		<div class="add-account__links">
+			{#if mode === 'sign-in'}
+				{#if passwordReset}
+					<Button fullWidth onclick={() => switchTo('password-reset')} disabled={isSubmitting}>
+						{messages.goToPasswordReset}
+					</Button>
+				{/if}
+				{#if canSignUp}
+					<Button fullWidth onclick={() => switchTo('sign-up')} disabled={isSubmitting}>
+						{messages.goToSignUp}
+					</Button>
+				{/if}
+			{:else}
+				<Button fullWidth onclick={() => switchTo('sign-in')} disabled={isSubmitting}>
+					{messages.backToSignIn}
 				</Button>
 			{/if}
-		{:else}
-			<Button fullWidth onclick={() => switchTo('sign-in')} disabled={isSubmitting}>
-				{messages.backToSignIn}
-			</Button>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </section>
 
 <style>

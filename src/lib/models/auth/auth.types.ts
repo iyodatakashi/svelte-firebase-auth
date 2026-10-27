@@ -462,20 +462,30 @@ export interface AuthBaseProps {
 	readonly onCompleted?: () => void;
 }
 
+/** 追加ログインの表示。同じ領域の中で切り替える */
+export type AddAccountMode = 'sign-in' | 'sign-up' | 'password-reset';
+
 /** 追加ログインの中身。ダイアログの外枠・見出し・開閉は持たない */
 export interface AddAccountProps {
 	readonly store: AuthStore;
 	readonly messages?: AuthMessagesOverride;
 	/** サインイン・登録に成功したときに呼ばれる。閉じるかどうかは組み込み側が決める */
 	readonly onCompleted?: (account: AccountSummary) => void;
-	/** 利用者が取りやめたときに呼ばれる。送信中の試行は無効にしてある */
+	/** 利用者が中の取りやめのボタンを押したときに呼ばれる。送信中の試行は無効にしてある */
 	readonly onCancel?: () => void;
-}
-
-/** アカウントの一覧・切り替え・ログアウトの中身。任意で使う */
-export interface AccountChooserProps {
-	readonly store: AuthStore;
-	readonly messages?: AuthMessagesOverride;
-	/** アカウントの追加を求められたときに呼ばれる。追加の表示は組み込み側が出す */
-	readonly onAddRequested?: () => void;
+	/** パスワードの再設定へ切り替える導線を出すか。既定は出す */
+	readonly passwordReset?: boolean;
+	/** 登録へ切り替える導線を出すか。既定は出す。自由登録が許可されていなければ、指定によらず出さない */
+	readonly signUp?: boolean;
+	/**
+	 * 取りやめと送信のボタンを中に描くか。既定は描く。
+	 * 描かないときは、組み込み側が `form={id}` の送信ボタンと、部品の `cancel()` で操作する
+	 */
+	readonly actions?: boolean;
+	/** フォームの id。組み込み側が外に置いた送信ボタンから送信するのに使う */
+	readonly id?: string;
+	/** 送信中か。`bind:isSubmitting` で読む */
+	isSubmitting?: boolean;
+	/** いまの表示。`bind:mode` で読み、`'sign-in'` を書けばサインインへ戻る */
+	mode?: AddAccountMode;
 }
