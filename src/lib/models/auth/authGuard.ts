@@ -1,4 +1,4 @@
-import type { AuthGuardDecision, AuthGuardInput, AuthRoutes } from './auth.types';
+import type { AuthGuardDecision, AuthGuardInput, AuthRoutes, HeldReturnTo } from './auth.types';
 
 /**
  * 到達の判定。副作用を持たず、`$app/*` を参照しない。
@@ -11,10 +11,21 @@ export const resolveAuthGuard = ({
 	stage,
 	currentPath,
 	routes,
-	returnTo
+	returnTo,
+	accountUid,
+	accountUids,
+	lastShown
 }: AuthGuardInput): AuthGuardDecision => {
 	// 受け入れられない戻り先は、持っていないものとして扱う。用いも保持し直しもしない
-	const held = returnTo !== null && isSafeReturnTo(returnTo) ? returnTo : null;
+	const held = returnTo !== null && isSafeReturnTo(returnTo.path) ? returnTo : null;
+	/**
+	 * 現在の経路を戻り先にする。使用中のアカウントが離れたときに開いていた経路なら、
+	 * そのアカウントにだけ戻す。別のアカウントに、前のアカウントの経路を引き継がせない
+	 */
+	const current: HeldReturnTo = {
+		path: currentPath,
+		ownerUid: lastShown !== null && lastShown.path === currentPath ? lastShown.uid : null
+	};
 
 	switch (stage) {
 		case 'unresolved':
@@ -25,7 +36,7 @@ export const resolveAuthGuard = ({
 				return { kind: 'allow' };
 			}
 			// 認証の経路は戻り先にしない。サインインの後にサインインへ戻ると遷移が止まらない
-			const origin = isAuthRoute(currentPath, routes) ? held : currentPath;
+			const origin = isAuthRoute(currentPath, routes) ? held : current;
 			return { kind: 'redirect', to: routes.signIn, returnTo: origin };
 		}
 
@@ -37,7 +48,7 @@ export const resolveAuthGuard = ({
 			// 遷移しない。組み込み側の選択 UI からアカウントが選ばれるのを待つ
 			return {
 				kind: 'select',
-				returnTo: matchesRoute(currentPath, routes.verifyEmail) ? held : currentPath
+				returnTo: matchesRoute(currentPath, routes.verifyEmail) ? held : current
 			};
 
 		case 'email-unverified':
@@ -46,11 +57,43 @@ export const resolveAuthGuard = ({
 				: // 確認を終えるまでのあいだ、保持している戻り先を失わせない
 					{ kind: 'redirect', to: routes.verifyEmail, returnTo: held };
 
-		case 'ready':
-			return isAuthRoute(currentPath, routes)
-				? { kind: 'redirect', to: destinationOf(held, routes), returnTo: null }
-				: { kind: 'allow' };
+		case 'ready': {
+			const isOthers = held !== null && held.ownerUid !== null && held.ownerUid !== accountUid;
+			if (isAuthRoute(currentPath, routes)) {
+				return {
+					kind: 'redirect',
+					to: destinationOf(isOthers ? null : held, routes),
+					returnTo: null
+				};
+			}
+			// 前のアカウントが離れた後、同じ経路のまま別のアカウントになった。前のアカウントの経路に留めない。
+			// 選択の解除を経た場合は保持した戻り先で、1件だけ残ってそのまま選ばれた場合は最後に見せた経路で分かる。
+			// 前のアカウントをまだ保持しているなら、利用者が自分で切り替えたのであり、留める。
+			// 既定の行き先そのものなら振り替えない。同じ経路への振り替えは終わらない
+			const leftHere =
+				(isOthers && held.path === currentPath) ||
+				(lastShown !== null &&
+					lastShown.path === currentPath &&
+					lastShown.uid !== accountUid &&
+					!accountUids.includes(lastShown.uid));
+			if (leftHere && !matchesRoute(currentPath, routes.afterSignIn)) {
+				return { kind: 'redirect', to: routes.afterSignIn, returnTo: null };
+			}
+			return { kind: 'allow' };
+		}
 	}
+};
+
+/** 保存された戻り先の形を検証する。合わないものは `null` として捨てる */
+export const parseHeldReturnTo = (value: unknown): HeldReturnTo | null => {
+	if (typeof value !== 'object' || value === null) {
+		return null;
+	}
+	const { path, ownerUid } = value as Record<string, unknown>;
+	if (typeof path !== 'string' || (ownerUid !== null && typeof ownerUid !== 'string')) {
+		return null;
+	}
+	return { path, ownerUid };
 };
 
 /**
@@ -77,8 +120,8 @@ const matchesAny = (path: string, candidates: readonly string[]): boolean =>
 	candidates.some((route) => matchesRoute(path, route));
 
 /** 戻り先が認証の経路であれば用いない。振り替えが止まらなくなるため */
-const destinationOf = (held: string | null, routes: AuthRoutes): string =>
-	held !== null && !isAuthRoute(held, routes) ? held : routes.afterSignIn;
+const destinationOf = (held: HeldReturnTo | null, routes: AuthRoutes): string =>
+	held !== null && !isAuthRoute(held.path, routes) ? held.path : routes.afterSignIn;
 
 /** 問い合わせ文字列を落とし、末尾の区切りを取り除く。根（`/`）は空にしない */
 const normalizePath = (path: string): string => {

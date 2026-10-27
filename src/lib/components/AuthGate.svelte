@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { resolveAuthGuard } from '$lib/models/auth/authGuard';
-	import type { AuthGateProps } from '$lib/models/auth/auth.types';
+	import { parseHeldReturnTo, resolveAuthGuard } from '$lib/models/auth/authGuard';
+	import type { AuthGateProps, ShownRoute } from '$lib/models/auth/auth.types';
 
 	let { store, children, pending }: AuthGateProps = $props();
 
 	/**
 	 * サインインの後に戻る経路の保持。タブ単位で、再読み込みと経路の移動を跨いで保つ。
-	 * 保持するのは経路だけであり、認証の状態は持たない
+	 * 保持するのは経路と、その持ち主のアカウントの uid だけであり、認証の状態は持たない
 	 */
 	const RETURN_TO_KEY = 'svelte-firebase-auth:return-to';
 
@@ -21,19 +21,44 @@
 		}
 	};
 
+	const parseJson = (value: string | null): unknown => {
+		if (value === null) {
+			return null;
+		}
+		try {
+			return JSON.parse(value);
+		} catch {
+			return null;
+		}
+	};
+
 	/**
 	 * 実行中の振り替え先。**遷移は非同期であり、完了前に段階が変わると二重に走る**。
 	 * 追随の対象にしない（効果の中だけで読み書きする）
 	 */
 	let redirectingTo: string | null = null;
 
-	// 段階と現在の経路の双方を読む。どちらが変わっても判定し直す
+	/**
+	 * 最後に内容を見せた経路と、そのときのアカウント。使用中のアカウントが離れたときに
+	 * 開いていた経路を、そのアカウントの戻り先として保持するために使う。
+	 * メモリだけに持つ。再読み込みの後に開いた経路は、アカウントを使っていない状態で開いたものとする
+	 */
+	let lastShown: ShownRoute | null = null;
+
+	const currentPath = $derived(`${page.url.pathname}${page.url.search}`);
+
+	// 段階・使用中のアカウント・現在の経路を読む。どれが変わっても判定し直す
 	const decision = $derived(
 		resolveAuthGuard({
 			stage: store.stage,
-			currentPath: `${page.url.pathname}${page.url.search}`,
+			currentPath,
 			routes: store.routes,
-			returnTo: withStorage((storage) => storage.getItem(RETURN_TO_KEY))
+			returnTo: withStorage((storage) =>
+				parseHeldReturnTo(parseJson(storage.getItem(RETURN_TO_KEY)))
+			),
+			accountUid: store.activeAccount?.uid ?? null,
+			accountUids: store.accounts.map((account) => account.uid),
+			lastShown
 		})
 	);
 
@@ -41,6 +66,11 @@
 	$effect(() => {
 		if (decision.kind !== 'redirect' && decision.kind !== 'select') {
 			redirectingTo = null;
+			// 内容を見せたときだけ記録する。判定待ちの間に消すと、離れたアカウントが分からなくなる
+			if (decision.kind === 'allow') {
+				const uid = store.activeAccount?.uid;
+				lastShown = uid === undefined ? null : { path: currentPath, uid };
+			}
 			return;
 		}
 
@@ -49,7 +79,7 @@
 		if (returnTo === null) {
 			withStorage((storage) => storage.removeItem(RETURN_TO_KEY));
 		} else {
-			withStorage((storage) => storage.setItem(RETURN_TO_KEY, returnTo));
+			withStorage((storage) => storage.setItem(RETURN_TO_KEY, JSON.stringify(returnTo)));
 		}
 
 		// 選択待ちでは遷移しない。組み込み側がガードの外に置いた選択 UI からアカウントが選ばれるのを待つ

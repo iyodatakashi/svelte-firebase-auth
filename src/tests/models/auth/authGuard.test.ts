@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { matchesRoute, resolveAuthGuard } from '$lib/models/auth/authGuard';
-import type { AuthGuardDecision, AuthRoutes, AuthStage } from '$lib/models/auth/auth.types';
+import { matchesRoute, parseHeldReturnTo, resolveAuthGuard } from '$lib/models/auth/authGuard';
+import type {
+	AuthGuardDecision,
+	AuthRoutes,
+	AuthStage,
+	HeldReturnTo,
+	ShownRoute
+} from '$lib/models/auth/auth.types';
 
 describe('経路の一致 — 要件 2.5', () => {
 	it('問い合わせ文字列を判定に用いない', () => {
@@ -31,11 +37,28 @@ const routes: AuthRoutes = {
 	afterSignIn: '/'
 };
 
+/** 持ち主の無い戻り先。アカウントを使っていない状態で開いた経路 */
+const shared = (path: string): HeldReturnTo => ({ path, ownerUid: null });
+
 const resolve = (
 	stage: AuthStage,
 	currentPath: string,
-	returnTo: string | null = null
-): AuthGuardDecision => resolveAuthGuard({ stage, currentPath, routes, returnTo });
+	held: string | HeldReturnTo | null = null,
+	context: {
+		readonly accountUid?: string | null;
+		readonly accountUids?: readonly string[];
+		readonly lastShown?: ShownRoute | null;
+	} = {}
+): AuthGuardDecision =>
+	resolveAuthGuard({
+		stage,
+		currentPath,
+		routes,
+		returnTo: typeof held === 'string' ? shared(held) : held,
+		accountUid: context.accountUid ?? null,
+		accountUids: context.accountUids ?? (context.accountUid ? [context.accountUid] : []),
+		lastShown: context.lastShown ?? null
+	});
 
 describe('初回の判定が済むまで — 要件 4.1', () => {
 	it('何も決めない', () => {
@@ -55,7 +78,7 @@ describe('サインインしていない利用者 — 要件 4.2, 5.1, 5.6', () 
 		expect(resolve('signed-out', '/documents/42?tab=history')).toEqual({
 			kind: 'redirect',
 			to: '/signin',
-			returnTo: '/documents/42?tab=history'
+			returnTo: shared('/documents/42?tab=history')
 		});
 	});
 
@@ -78,14 +101,14 @@ describe('保持アカウントはあるが選択が無い — 要件 6.1, 6.2, 
 	it('保護された経路では遷移せずに選択を待ち、現在の経路を戻り先として保持する', () => {
 		expect(resolve('account-unselected', '/documents/42?tab=history')).toEqual({
 			kind: 'select',
-			returnTo: '/documents/42?tab=history'
+			returnTo: shared('/documents/42?tab=history')
 		});
 	});
 
 	it('確認待ちの経路では遷移せずに選択を待ち、保持している戻り先を失わせない', () => {
 		expect(resolve('account-unselected', '/verify-email', '/documents/42')).toEqual({
 			kind: 'select',
-			returnTo: '/documents/42'
+			returnTo: shared('/documents/42')
 		});
 		expect(resolve('account-unselected', '/verify-email')).toEqual({
 			kind: 'select',
@@ -95,7 +118,7 @@ describe('保持アカウントはあるが選択が無い — 要件 6.1, 6.2, 
 
 	it('選択した後は、通過した段階で保持した戻り先へ戻す', () => {
 		const held = resolve('account-unselected', '/documents/42');
-		expect(held.kind === 'select' && held.returnTo).toBe('/documents/42');
+		expect(held.kind === 'select' && held.returnTo).toEqual(shared('/documents/42'));
 		// 選択後に同じ経路へ留まれる
 		expect(resolve('ready', '/documents/42', '/documents/42')).toEqual({ kind: 'allow' });
 		// サインイン経路から選択した場合は戻り先へ進む
@@ -131,7 +154,7 @@ describe('確認が済んでいない利用者 — 要件 4.3, 5.5', () => {
 		expect(resolve('email-unverified', '/documents/42', '/documents/42')).toEqual({
 			kind: 'redirect',
 			to: '/verify-email',
-			returnTo: '/documents/42'
+			returnTo: shared('/documents/42')
 		});
 	});
 });
@@ -227,5 +250,126 @@ describe('振り替えが止まること — 要件 4.2, 4.3, 4.4', () => {
 				}
 			}
 		}
+	});
+});
+
+describe('戻り先とアカウントの結びつき — 要件 6.10, 6.11（multi-account-auth）', () => {
+	const shownByA: ShownRoute = { path: '/documents/42', uid: 'uid-a' };
+	const ownedByA: HeldReturnTo = { path: '/documents/42', ownerUid: 'uid-a' };
+
+	it('使用中のアカウントが離れたときに開いていた経路は、そのアカウントの戻り先として保持する', () => {
+		expect(resolve('signed-out', '/documents/42', null, { lastShown: shownByA })).toEqual({
+			kind: 'redirect',
+			to: '/signin',
+			returnTo: ownedByA
+		});
+		expect(resolve('account-unselected', '/documents/42', null, { lastShown: shownByA })).toEqual({
+			kind: 'select',
+			returnTo: ownedByA
+		});
+	});
+
+	it('アカウントを使っていない状態で開いた経路は、持ち主の無い戻り先として保持する', () => {
+		expect(resolve('signed-out', '/documents/7', null, { lastShown: shownByA })).toEqual({
+			kind: 'redirect',
+			to: '/signin',
+			returnTo: shared('/documents/7')
+		});
+		expect(resolve('signed-out', '/documents/42')).toEqual({
+			kind: 'redirect',
+			to: '/signin',
+			returnTo: shared('/documents/42')
+		});
+	});
+
+	it('同じアカウントが通過の段階になれば、保持した戻り先へ戻す', () => {
+		expect(resolve('ready', '/signin', ownedByA, { accountUid: 'uid-a' })).toEqual({
+			kind: 'redirect',
+			to: '/documents/42',
+			returnTo: null
+		});
+	});
+
+	it('別のアカウントが通過の段階になれば、既定の行き先へ進めて戻り先を破棄する', () => {
+		expect(resolve('ready', '/signin', ownedByA, { accountUid: 'uid-b' })).toEqual({
+			kind: 'redirect',
+			to: '/',
+			returnTo: null
+		});
+	});
+
+	it('選択の解除の後に同じ経路のまま別のアカウントが選ばれたら、既定の行き先へ振り替える', () => {
+		expect(resolve('ready', '/documents/42', ownedByA, { accountUid: 'uid-b' })).toEqual({
+			kind: 'redirect',
+			to: '/',
+			returnTo: null
+		});
+	});
+
+	it('同じ経路のまま同じアカウントが選ばれたら、留まる', () => {
+		expect(resolve('ready', '/documents/42', ownedByA, { accountUid: 'uid-a' })).toEqual({
+			kind: 'allow'
+		});
+	});
+
+	it('持ち主の無い戻り先は、どのアカウントにも使う', () => {
+		expect(resolve('ready', '/signin', shared('/documents/42'), { accountUid: 'uid-b' })).toEqual({
+			kind: 'redirect',
+			to: '/documents/42',
+			returnTo: null
+		});
+		expect(
+			resolve('ready', '/documents/42', shared('/documents/42'), { accountUid: 'uid-b' })
+		).toEqual({ kind: 'allow' });
+	});
+
+	it('別のアカウントの戻り先が既定の行き先そのものなら、振り替えずに留める', () => {
+		expect(
+			resolve('ready', '/', { path: '/', ownerUid: 'uid-a' }, { accountUid: 'uid-b' })
+		).toEqual({ kind: 'allow' });
+	});
+
+	it('保存された戻り先の形を検証し、合わないものを捨てる', () => {
+		expect(parseHeldReturnTo({ path: '/documents/42', ownerUid: 'uid-a' })).toEqual(ownedByA);
+		expect(parseHeldReturnTo({ path: '/documents/42', ownerUid: null })).toEqual(
+			shared('/documents/42')
+		);
+		for (const value of [
+			null,
+			'/documents/42',
+			{ path: 3, ownerUid: null },
+			{ path: '/a', ownerUid: 1 }
+		]) {
+			expect(parseHeldReturnTo(value)).toBeNull();
+		}
+	});
+
+	it('A が離れて残りの B が選ばれたら、A が開いていた経路から既定の行き先へ振り替える', () => {
+		// 1件だけ残ると、未選択を経ずにそのまま選ばれる。戻り先を保持する機会が無い
+		expect(
+			resolve('ready', '/documents/42', null, {
+				accountUid: 'uid-b',
+				accountUids: ['uid-b'],
+				lastShown: shownByA
+			})
+		).toEqual({ kind: 'redirect', to: '/', returnTo: null });
+	});
+
+	it('A を保持したままメニューから B へ切り替えたなら、同じ経路に留まる', () => {
+		expect(
+			resolve('ready', '/documents/42', null, {
+				accountUid: 'uid-b',
+				accountUids: ['uid-a', 'uid-b'],
+				lastShown: shownByA
+			})
+		).toEqual({ kind: 'allow' });
+	});
+
+	it('確認待ちのあいだは、持ち主ごと戻り先を保ち続ける', () => {
+		expect(resolve('email-unverified', '/documents/9', ownedByA, { accountUid: 'uid-b' })).toEqual({
+			kind: 'redirect',
+			to: '/verify-email',
+			returnTo: ownedByA
+		});
 	});
 });

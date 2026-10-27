@@ -19,6 +19,8 @@ afterEach(() => {
 	sessionStorage.clear();
 });
 
+const held = (): unknown => JSON.parse(sessionStorage.getItem(RETURN_TO_KEY) ?? 'null');
+
 /** A と B を保持し、どちらも選んでいない */
 const unselected = () =>
 	fakeStore({
@@ -44,7 +46,7 @@ describe('選択待ち — 要件 6.2, 6.3, 6.9（multi-account-auth）', () => 
 		await render(AuthGate, { props: { store, children, pending } });
 
 		await vi.waitFor(() =>
-			expect(sessionStorage.getItem(RETURN_TO_KEY)).toBe('/documents/42?tab=history')
+			expect(held()).toEqual({ path: '/documents/42?tab=history', ownerUid: null })
 		);
 	});
 });
@@ -75,5 +77,76 @@ describe('選択の後 — 要件 6.6, 6.7（multi-account-auth）', () => {
 		await vi.waitFor(() =>
 			expect(vi.mocked(goto)).toHaveBeenCalledWith('/verify-email', { replaceState: true })
 		);
+	});
+});
+
+describe('戻り先とアカウントの結びつき — 要件 6.10, 6.11（multi-account-auth）', () => {
+	const a = fakeAccount({ id: 'a', uid: 'uid-a', email: 'a@example.com', isEmailVerified: true });
+	const b = fakeAccount({ id: 'b', uid: 'uid-b', email: 'b@example.com', isEmailVerified: true });
+
+	/** A が保護された経路の内容を見ている状態から、A が離れる */
+	const leaveFromA = async () => {
+		const fake = fakeStore({ accounts: [a, b], activeId: 'a' });
+		const screen = await render(AuthGate, { props: { store: fake.store, children, pending } });
+		await expect.element(screen.getByText('保護された内容')).toBeInTheDocument();
+		fake.switchTo(null);
+		await vi.waitFor(() =>
+			expect(held()).toEqual({ path: '/documents/42?tab=history', ownerUid: 'uid-a' })
+		);
+		return { ...fake, screen };
+	};
+
+	it('使用中のアカウントが離れたときに開いていた経路は、そのアカウントの戻り先として保持する', async () => {
+		await leaveFromA();
+	});
+
+	it('同じ経路のまま別のアカウントが選ばれたら、内容を出さずに既定の行き先へ振り替える', async () => {
+		const { screen, switchTo } = await leaveFromA();
+
+		switchTo(b);
+
+		await vi.waitFor(() =>
+			expect(vi.mocked(goto)).toHaveBeenCalledWith('/', { replaceState: true })
+		);
+		await expect.element(screen.getByText('保護された内容')).not.toBeInTheDocument();
+		expect(held()).toBeNull();
+	});
+
+	it('同じアカウントが再び選ばれたら、同じ経路のまま内容を出す', async () => {
+		const { screen, switchTo } = await leaveFromA();
+
+		switchTo(a);
+
+		await expect.element(screen.getByText('保護された内容')).toBeInTheDocument();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('A が離れて残りの B がそのまま選ばれても、A が見ていた経路から既定の行き先へ振り替える', async () => {
+		const { store, remove, switchTo, setStage } = fakeStore({ accounts: [a, b], activeId: 'a' });
+		const screen = await render(AuthGate, { props: { store, children, pending } });
+		await expect.element(screen.getByText('保護された内容')).toBeInTheDocument();
+
+		// 1件だけ残ると未選択を経ず、残す方へ複製し終えるまで判定待ちになる
+		setStage('unresolved');
+		remove('a');
+		await expect.element(screen.getByText('読み込み中')).toBeInTheDocument();
+		switchTo(b);
+		setStage(null);
+
+		await vi.waitFor(() =>
+			expect(vi.mocked(goto)).toHaveBeenCalledWith('/', { replaceState: true })
+		);
+		await expect.element(screen.getByText('保護された内容')).not.toBeInTheDocument();
+	});
+
+	it('A を保持したまま B へ切り替えたなら、同じ経路のまま内容を出す', async () => {
+		const { store, switchTo } = fakeStore({ accounts: [a, b], activeId: 'a' });
+		const screen = await render(AuthGate, { props: { store, children, pending } });
+		await expect.element(screen.getByText('保護された内容')).toBeInTheDocument();
+
+		switchTo(b);
+
+		await expect.element(screen.getByText('保護された内容')).toBeInTheDocument();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
 	});
 });

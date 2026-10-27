@@ -160,6 +160,13 @@ export const fakeStore = (options: FakeStoreOptions = {}) => {
 			}
 			activeId = account?.id ?? null;
 		},
+		/** 一覧から外す。ログアウトにあたる */
+		remove: (id: string) => {
+			accounts = accounts.filter((account) => account.id !== id);
+			if (activeId === id) {
+				activeId = null;
+			}
+		},
 		setStage: (stage: AuthStage | null) => {
 			stageOverride = stage;
 		},
