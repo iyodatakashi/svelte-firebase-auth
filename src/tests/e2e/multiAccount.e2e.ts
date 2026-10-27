@@ -1,5 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { PASSWORD, createVerifiedUser, main, submitSignIn, uniqueEmail } from './support';
+import {
+	PASSWORD,
+	createUnverifiedUser,
+	createVerifiedUser,
+	main,
+	submitSignIn,
+	uniqueEmail
+} from './support';
 
 /** 組み込み側のユーザーメニューを模した入口を開き、項目を選ぶ */
 const chooseFromMenu = async (page: Page, item: string) => {
@@ -17,15 +24,10 @@ const addFromMenu = async (page: Page, email: string) => {
 	await expect(dialog).toBeHidden();
 };
 
-/** メニューから、別のアカウントを登録する。確認待ちへ案内されたところで返る */
-const signUpFromMenu = async (page: Page, email: string) => {
-	await chooseFromMenu(page, '別のアカウントにログイン');
-	const dialog = page.getByRole('dialog');
-	await dialog.getByRole('button', { name: 'サインアップ' }).click();
-	await dialog.getByLabel('メールアドレス').fill(email);
-	await dialog.getByLabel('パスワード', { exact: true }).fill(PASSWORD);
-	await dialog.getByRole('button', { name: '登録する' }).click();
-	await expect(dialog).toBeHidden();
+/** 確認の済んでいないアカウントを、メニューから追加する。確認待ちへ案内されたところで返る */
+const addUnverifiedFromMenu = async (page: Page, email: string) => {
+	await createUnverifiedUser(page.request, email);
+	await addFromMenu(page, email);
 	await expect(page).toHaveURL('/verify-email');
 };
 
@@ -209,7 +211,7 @@ test('確認待ちのアカウントから、別のアカウントへ切り替�
 	await signedInAs(page, verified);
 
 	// 確認の済んでいないアカウントを追加すると、確認待ちへ案内される
-	await signUpFromMenu(page, uniqueEmail('unverified'));
+	await addUnverifiedFromMenu(page, uniqueEmail('unverified'));
 
 	// 他のアカウントが確認済みでも、保護された経路へは進めない
 	await page.goto('/password-change');
@@ -229,7 +231,7 @@ test('確認待ちの画面のサインアウトは、選択中のアカウン�
 	await submitSignIn(page, verified);
 	await signedInAs(page, verified);
 
-	await signUpFromMenu(page, uniqueEmail('leave'));
+	await addUnverifiedFromMenu(page, uniqueEmail('leave'));
 	await main(page).getByRole('button', { name: 'サインアウト' }).click();
 
 	// ログアウトしたのは確認待ちのアカウントだけ。1件だけ残ったアカウントが選ばれる

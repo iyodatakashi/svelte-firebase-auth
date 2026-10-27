@@ -11,13 +11,19 @@ export const uniqueEmail = (label: string) =>
 /** 画面の本体。閉じたダイアログの中身も文書には残るため、操作の対象を本体に絞る */
 export const main = (page: Page): Locator => page.getByRole('main');
 
-/** 確認済みの利用者を、画面を通さずに作る */
-export const createVerifiedUser = async (request: APIRequestContext, email: string) => {
+/** 確認の済んでいない利用者を、画面を通さずに作る */
+export const createUnverifiedUser = async (request: APIRequestContext, email: string) => {
 	const created = await request.post(
 		`${EMULATOR_ORIGIN}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key`,
 		{ data: { email, password: PASSWORD } }
 	);
 	const { localId }: { localId: string } = await created.json();
+	return localId;
+};
+
+/** 確認済みの利用者を、画面を通さずに作る */
+export const createVerifiedUser = async (request: APIRequestContext, email: string) => {
+	const localId = await createUnverifiedUser(request, email);
 	await request.post(
 		`${EMULATOR_ORIGIN}/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:update`,
 		{ headers: { Authorization: 'Bearer owner' }, data: { localId, emailVerified: true } }
