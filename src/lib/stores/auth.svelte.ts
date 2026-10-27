@@ -66,6 +66,8 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 	 * 切り替え・サインイン・ログアウト・失効は、まずこれを書き換えてから土台の更新を待ち行列へ積む
 	 */
 	let target: string | null = null;
+	/** 全件のログアウトの途中。1件ずつ外す間に残りが1件になっても、それを選ばない */
+	let isSigningOutAll = false;
 	/** 土台を更新する処理の待ち行列。複製もサインアウトも非同期であり、並行すると完了の順で中身が決まる */
 	let baseQueue: Promise<unknown> = Promise.resolve();
 	let persistence: AccountPersistence | null = null;
@@ -178,26 +180,29 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		restoreFailures = [];
 		operation = null;
 		pendingAttempt = null;
+		isSigningOutAll = false;
 		persistence = null;
 		storageStatus = 'available';
 	};
 
 	/**
 	 * 複数アカウント指定では、タブ内の選択記録を優先し、記録が無ければ最後に開いたアカウントを選ぶ。
-	 * 明示的な未選択を引き継いだときは未選択を保つ
+	 * 明示的な未選択を引き継いだときは未選択を保つ。ただし保持アカウントが1件だけなら、選ぶ場に
+	 * 意味が無いため、どの場合もそれを選ぶ
 	 */
 	const initialSelection = (reconciliation: SlotReconciliation): string | null => {
 		if (!config.multiAccount) {
-			return memberIds[0] ?? null;
+			return soleMember();
 		}
 		const recorded = withStorage((storage) => storage.readActiveId());
-		if (recorded !== undefined) {
-			return representativeOf(recorded, reconciliation);
-		}
-		return representativeOf(
-			withStorage((storage) => storage.readLastOpenedId()) ?? null,
-			reconciliation
-		);
+		const candidate =
+			recorded !== undefined
+				? representativeOf(recorded, reconciliation)
+				: representativeOf(
+						withStorage((storage) => storage.readLastOpenedId()) ?? null,
+						reconciliation
+					);
+		return candidate ?? soleMember();
 	};
 
 	/** 別のタブで書かれたスロット記録を一覧へ加える。現在のタブの選択は変えない */
@@ -238,10 +243,22 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 			)
 		);
 		await keepLatestOnly();
-		if (!config.multiAccount && target === null && memberIds.length > 0) {
-			await moveTo(memberIds[0]);
+		await selectSoleAccount();
+	};
+
+	/** 選択が無く、保持アカウントが1件だけなら、それを選ぶ。選ぶ場は選択肢が複数あるときだけ意味がある */
+	const selectSoleAccount = async (): Promise<void> => {
+		const sole = soleMember();
+		if (target !== null || sole === null) {
+			return;
+		}
+		const moved = await moveTo(sole);
+		if (moved.ok && target === sole) {
+			rememberSelection(sole);
 		}
 	};
+
+	const soleMember = (): string | null => (memberIds.length === 1 ? memberIds[0] : null);
 
 	/**
 	 * 同じ UID の重複を解消する。重複側をログアウトし、選択が重複側を指していれば代表へ付け替える
@@ -322,7 +339,8 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 
 	/**
 	 * ログアウトしたアカウントを一覧から外す。選択中なら土台を空にして明示的な未選択を保存し、
-	 * 他のアカウントを自動で選ばない。同じアカウントの重複が残っていれば、そちらへ付け替える
+	 * 2件以上残っていれば自動で選ばない。残りがちょうど1件ならそれを選ぶ。
+	 * 同じアカウントの重複が残っていれば、そちらへ付け替える
 	 */
 	const forget = (id: string): Promise<unknown> => {
 		if (!memberIds.includes(id)) {
@@ -341,8 +359,7 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		if (target !== id) {
 			return baseQueue;
 		}
-		// 単一アカウント指定は、保持していれば常にそれを選ぶ
-		target = representative ?? (config.multiAccount ? null : (memberIds[0] ?? null));
+		target = representative ?? (isSigningOutAll ? null : soleMember());
 		if (target === null) {
 			// 複製を空にし終える前に、保護された内容を隠す
 			activeId = null;
@@ -536,6 +553,7 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 			return { ok: false, reason: 'busy', signedOutIds: [] };
 		}
 		operation = { kind: 'sign-out' };
+		isSigningOutAll = true;
 		const signedOutIds: string[] = [];
 		const failed: AccountFailure[] = [];
 		for (const id of memberIds) {
@@ -546,6 +564,9 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 				failed.push({ id, error: result.error });
 			}
 		}
+		isSigningOutAll = false;
+		// 一部が失敗して1件だけ残れば、それを選ぶ
+		await selectSoleAccount();
 		operation = null;
 		return failed.length === 0
 			? { ok: true, signedOutIds }
@@ -682,8 +703,9 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		}
 		const account = activeAccount();
 		if (account === null) {
-			// 単一アカウント指定で選択が無いのは、保持したアカウントを選び終えるまでの間だけ
-			return config.multiAccount ? 'account-unselected' : 'unresolved';
+			// 残すアカウントへ複製し終えるまでの間（目標がある間）は、未選択に見せない。
+			// 単一アカウント指定で選択が無いのは、その間だけである
+			return target !== null || !config.multiAccount ? 'unresolved' : 'account-unselected';
 		}
 		if (config.emailVerification && !account.isEmailVerified) {
 			return 'email-unverified';

@@ -103,6 +103,7 @@ describe('土台の App のデータアクセス — 要件 3.2, 3.3, 7.7', () =
 	it('未選択になると土台は空になり、データへのアクセスは拒否される', async () => {
 		const a = await signIn('a@example.com');
 		await signIn('b@example.com');
+		await signIn('c@example.com');
 		await store.signOut();
 
 		expect(store.stage).toBe('account-unselected');
@@ -123,6 +124,7 @@ describe('土台とスロットの独立 — 要件 4.1, 5.3', () => {
 	it('土台を空にしても、スロットのログイン状態は残り、選び直せる', async () => {
 		const a = await signIn('a@example.com');
 		const b = await signIn('b@example.com');
+		await signIn('c@example.com');
 		await store.selectAccount(a.id);
 		// B は選ばれていない間も、トークンを取り直せる
 		await store.signOut();

@@ -348,6 +348,7 @@ describe('切り替え — 要件 1.3, 3.1, 3.2, 3.3, 3.4, 7.6', () => {
 		const { store, base } = await open();
 		const a = await signIn(store, 'a@example.com');
 		await signIn(store, 'b@example.com');
+		await signIn(store, 'c@example.com');
 
 		const copy = holdNextCopy();
 		const switching = store.selectAccount(a.id);
@@ -366,6 +367,7 @@ describe('切り替え — 要件 1.3, 3.1, 3.2, 3.3, 3.4, 7.6', () => {
 		const { store } = await open();
 		const a = await signIn(store, 'a@example.com');
 		await signIn(store, 'b@example.com');
+		await signIn(store, 'c@example.com');
 
 		const copy = holdNextCopy();
 		const switching = store.selectAccount(a.id);
@@ -540,6 +542,7 @@ describe('サインインと登録 — 要件 2.2, 2.3, 2.4, 2.5, 4.14, 7.5, 7.1
 		const { store, tab } = await open();
 		const a = await signIn(store, 'a@example.com');
 		await signIn(store, 'b@example.com');
+		await signIn(store, 'c@example.com');
 		await store.signOut();
 		expect(tab.activeId).toBeNull();
 
@@ -682,10 +685,11 @@ describe('ログアウト — 要件 4.6, 4.9, 5.2, 5.3, 5.4, 5.5, 5.6, 5.8, 5.9
 		expect(store.accounts.map((account) => account.id)).toEqual([b.id]);
 	});
 
-	it('選択中のアカウントのログアウトは選択を解除し、残ったアカウントを自動で選ばない', async () => {
+	it('選択中のアカウントのログアウトは選択を解除し、2件以上残ったアカウントを自動で選ばない', async () => {
 		const { store, base, tab } = await open();
 		const a = await signIn(store, 'a@example.com');
-		await signIn(store, 'b@example.com');
+		const b = await signIn(store, 'b@example.com');
+		await signIn(store, 'c@example.com');
 
 		const result = await store.signOut();
 
@@ -693,11 +697,26 @@ describe('ログアウト — 要件 4.6, 4.9, 5.2, 5.3, 5.4, 5.5, 5.6, 5.8, 5.9
 		expect(store.activeId).toBeNull();
 		expect(store.user).toBeNull();
 		expect(store.stage).toBe('account-unselected');
-		expect(store.accounts.map((account) => account.id)).toEqual([a.id]);
+		expect(store.accounts.map((account) => account.id)).toEqual([a.id, b.id]);
 		expect(base.currentUser).toBeNull();
 		// 明示的な未選択を保存し、最後に開いたアカウントが一致すれば消す
 		expect(tab.activeId).toBeNull();
 		expect(browser.lastOpenedId).toBeNull();
+	});
+
+	it('選択中のアカウントのログアウトで残りがちょうど1件なら、それを選ぶ', async () => {
+		const { store, base, tab } = await open();
+		const a = await signIn(store, 'a@example.com');
+		await signIn(store, 'b@example.com');
+
+		const result = await store.signOut();
+
+		expect(result.ok).toBe(true);
+		expect(store.activeId).toBe(a.id);
+		expect(store.stage).toBe('email-unverified');
+		expect(base.currentUser?.uid).toBe(a.uid);
+		expect(tab.activeId).toBe(a.id);
+		expect(browser.lastOpenedId).toBe(a.id);
 	});
 
 	it('全件のログアウトは、保持アカウントと選択を空にする', async () => {
@@ -705,9 +724,12 @@ describe('ログアウト — 要件 4.6, 4.9, 5.2, 5.3, 5.4, 5.5, 5.6, 5.8, 5.9
 		const a = await signIn(store, 'a@example.com');
 		const b = await signIn(store, 'b@example.com');
 
+		const copies = firebaseAuthMock.updateCurrentUser.mock.calls.length;
 		const result = await store.signOutAll();
 
 		expect(result).toEqual({ ok: true, signedOutIds: [a.id, b.id] });
+		// 途中で1件になっても、その1件を選ばない
+		expect(firebaseAuthMock.updateCurrentUser).toHaveBeenCalledTimes(copies);
 		expect(store.accounts).toEqual([]);
 		expect(store.stage).toBe('signed-out');
 		expect(base.currentUser).toBeNull();
@@ -735,6 +757,8 @@ describe('ログアウト — 要件 4.6, 4.9, 5.2, 5.3, 5.4, 5.5, 5.6, 5.8, 5.9
 			]
 		});
 		expect(store.accounts.map((account) => account.id)).toEqual([a.id]);
+		// 終わって1件だけ残れば、それを選ぶ
+		expect(store.activeId).toBe(a.id);
 	});
 
 	it('ログアウトに失敗したら、対象と理由を返して一覧に残す', async () => {
@@ -755,19 +779,32 @@ describe('ログアウト — 要件 4.6, 4.9, 5.2, 5.3, 5.4, 5.5, 5.6, 5.8, 5.9
 		const { store, base, tab } = await open();
 		const a = await signIn(store, 'a@example.com');
 		const b = await signIn(store, 'b@example.com');
+		const c = await signIn(store, 'c@example.com');
 
-		signOutElsewhere(slotAppName(b.id));
+		signOutElsewhere(slotAppName(c.id));
 		await settle();
 
-		expect(store.accounts.map((account) => account.id)).toEqual([a.id]);
+		expect(store.accounts.map((account) => account.id)).toEqual([a.id, b.id]);
 		expect(store.activeId).toBeNull();
 		expect(store.stage).toBe('account-unselected');
 		expect(base.currentUser).toBeNull();
 		expect(tab.activeId).toBeNull();
 		expect(browser.lastOpenedId).toBeNull();
 		expect(firebaseAppMock.deleteApp).toHaveBeenCalledWith(
-			expect.objectContaining({ name: slotAppName(b.id) })
+			expect.objectContaining({ name: slotAppName(c.id) })
 		);
+	});
+
+	it('別のタブで選択中のアカウントがログアウトされ、残りがちょうど1件なら、それを選ぶ', async () => {
+		const { store } = await open();
+		const a = await signIn(store, 'a@example.com');
+		const b = await signIn(store, 'b@example.com');
+
+		signOutElsewhere(slotAppName(b.id));
+		await settle();
+		await settle();
+
+		expect(store.activeId).toBe(a.id);
 	});
 
 	it('別のタブで非選択のアカウントがログアウトされても、選択を保つ', async () => {
@@ -897,6 +934,34 @@ describe('タブの選択と復元 — 要件 4.2, 4.3, 4.7, 4.8, 4.11, 4.12', (
 		const { store } = await open();
 
 		expect(store.stage).toBe('account-unselected');
+	});
+
+	it('保持アカウントが1件だけなら、明示的な未選択を引き継いでもそれを選ぶ', async () => {
+		const first = await open();
+		const a = await signIn(first.store, 'a@example.com');
+		first.store.stop();
+		reloadFirebase();
+
+		const tab = browser.openTab(null);
+		const { store } = await open({ tab });
+
+		expect(store.activeId).toBe(a.id);
+		expect(tab.activeId).toBe(a.id);
+	});
+
+	it('選択の記録が無くても、保持アカウントが1件だけならそれを選んで記録する', async () => {
+		// 単一アカウント指定から複数アカウント指定へ変えた直後。単一では選択を記録しない
+		const first = await open({ config: single });
+		const a = await signIn(first.store, 'a@example.com');
+		first.store.stop();
+		reloadFirebase();
+
+		const tab = browser.openTab();
+		const { store } = await open({ tab });
+
+		expect(store.activeId).toBe(a.id);
+		expect(tab.activeId).toBe(a.id);
+		expect(browser.lastOpenedId).toBe(a.id);
 	});
 
 	it('保持アカウントがなければ、サインインへ案内する段階になる', async () => {
