@@ -232,9 +232,11 @@ The store exposes everything a menu needs, so the host app does not track accoun
 </Dialog>
 ```
 
-**`AddAccount` is content only.** It has the email and password fields, sign-up and password reset within the same area, and error messages, but no dialog frame, heading, or open/close. Pass `passwordReset={false}` or `signUp={false}` to hide the link to that view (sign-up also follows `selfRegistration`).
+**`AddAccount` is content only, and it only signs in.** It has the email and password fields and error messages, but no dialog frame, heading, or open/close, and no links to sign-up or password reset. Whether to offer those, and what to show for them, is up to you: place `SignUp` / `PasswordReset`, or call `store.signUp()` / `store.sendPasswordReset()` from your own screen. Signing up always adds an account too.
 
-To put the submit and cancel buttons in your dialog's footer, pass `actions={false}` and an `id`, then submit with `<button type="submit" form={id}>`. Read `bind:isSubmitting` for the button's loading state and `bind:mode` (`'sign-in'`, `'sign-up'`, or `'password-reset'`) for its label; write `mode = 'sign-in'` to go back to sign-in. Call `cancel()` on the component (via `bind:this`) when the dialog closes, so an in-flight attempt is ignored.
+`PasswordReset` can go in a dialog the same way: pass `actions={false}` to drop its submit button and its "back to sign-in" link (which navigates to the sign-in route), give it an `id`, and read `bind:isSubmitting` and `bind:isBlocked` (too many attempts) for your footer's button. Without `actions`, it behaves as before.
+
+To put the submit and cancel buttons in your dialog's footer, pass `actions={false}` and an `id`, then submit with `<button type="submit" form={id}>`. Read `bind:isSubmitting` for the button's loading state. Call `cancel()` on the component (via `bind:this`) when the dialog closes, so an in-flight attempt is ignored.
 
 ````svelte
 <Dialog
@@ -242,22 +244,11 @@ To put the submit and cancel buttons in your dialog's footer, pass `actions={fal
 	ariaLabel="Sign in to another account"
 	onClose={() => addAccount?.cancel()}
 >
-	<AddAccount
-		{store}
-		bind:this={addAccount}
-		bind:isSubmitting
-		bind:mode
-		id="add-account"
-		actions={false}
-	/>
+	<AddAccount {store} bind:this={addAccount} bind:isSubmitting id="add-account" actions={false} />
 	{#snippet footer()}
 		<Button onclick={() => addDialog?.close()}>Cancel</Button>
 		<Button type="submit" form="add-account" variant="filled" loading={isSubmitting}>
-			{mode === 'password-reset'
-				? 'Send a reset email'
-				: mode === 'sign-up'
-					? 'Create account'
-					: 'Sign in'}
+			Sign in
 		</Button>
 	{/snippet}
 </Dialog>

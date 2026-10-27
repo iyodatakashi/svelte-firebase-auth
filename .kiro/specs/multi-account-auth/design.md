@@ -462,35 +462,35 @@ interface AuthSessionProps {
 - 作り直しだけでは、破棄した画面で走っていた非同期処理（送信・確認状態の定期的な取り直し）の完了は止まらない。画面は処理の開始時に `activeId` を控え、完了時に「画面が破棄されている」か「`activeId` が控えた値と異なる」なら、表示の更新も `onCompleted` の呼び出しも行わない。定期的な取り直しは画面の破棄で止める（要件 3.6、7.18）。
 - `VerifyEmail` のサインアウトは `store.signOut()`（選択中アカウントのログアウト）になる。
 
+#### PasswordReset をダイアログに置く
+
+- markn は「別のアカウントでサインイン」と「パスワードの再設定」を、ダイアログの中の別々の中身として出し、それぞれが自分のフッターを持つ（2026-10-28、依頼者の判断）。再設定の入力・失敗の文言・送信済みの表示を二重に持たないよう、既存の `PasswordReset` に `AddAccount` と同じ口を足す。
+- `actions={false}` で送信のボタンと「サインインへ戻る」（ページを移る導線）を描かない。`id` をフォームに付け、`bind:isSubmitting`・`bind:isBlocked`（試行が続いて受け付けられなくなった）で外のボタンを制御させる。既定の振る舞いは変えない。
+- 画面の props に差分が出たため、`AuthBaseProps` を拡げた `PasswordResetProps` を持つ（→ steering `structure.md`）。
+
 #### AddAccount
 
 **Responsibilities & Constraints**
 
-- メールアドレスとパスワードの入力、送信中表示、既存のエラー語彙に対応した案内を行う。ダイアログの外枠、見出し、開閉は持たない。
-- 自由登録が許される場合は登録の入力へ、パスワード再設定を求める場合は再設定の入力へ、同じ内容領域内で切り替える。成功時はアカウントを含む通知を組み込み側へ返し、閉じるかどうかは組み込み側が決める。
+- **別のアカウントでのサインインだけを受け持つ。** メールアドレスとパスワードの入力、送信中表示、既存のエラー語彙に対応した案内を行う。ダイアログの外枠、見出し、開閉は持たない。成功時はアカウントを含む通知を組み込み側へ返し、閉じるかどうかは組み込み側が決める。
+- 当初は登録・再設定も同じ領域で `mode` によって切り替えていたが、やめた（2026-10-28、依頼者の判断）。入口とボタンの枠を固定したまま中身だけを差し替える形では、表示ごとに何を置くかを独立して決められず、ある表示を変えると別の表示に響いて直しにくい。登録・再設定へ進むかどうかと、進んだ先に何を出すかは組み込み側が決め、`SignUp`・`PasswordReset` またはストアの `signUp`・`sendPasswordReset` を使う。
 - 認証操作はストアへ委譲する。`SignIn` と同じ `store.signIn` を使い、`SignIn` のページ遷移は使わない。
 - 取消時は `cancelPendingSignIn()` を呼んで進行中の試行を無効化し、`onCancel` で組み込み側へ通知する。
-- 送信・取りやめのボタンは、ダイアログの作法に従って組み込み側がフッターに置けるようにする（markn の依頼、2026-10-27）。`actions={false}` で中に描かず、外の送信ボタンは `form={id}` でフォームを送り、送信中と表示は `bind:isSubmitting`・`bind:mode` で読む。取りやめは部品の `cancel()` を呼ぶ。ストアの `cancelPendingSignIn()` だけでは部品が送信中のまま残るため、部品側の口にした。ストアで取りやめられた結果（`cancelled`）は失敗として表示しない。
-- 再設定・登録への導線は `passwordReset`・`signUp` で別々に出し分ける。別のアカウントでサインインする場では、再設定は要るが登録は要らない、という依頼者の判断による。
+- 送信・取りやめのボタンは、ダイアログの作法に従って組み込み側がフッターに置けるようにする（markn の依頼、2026-10-27）。`actions={false}` で中に描かず、外の送信ボタンは `form={id}` でフォームを送り、送信中は `bind:isSubmitting` で読む。取りやめは部品の `cancel()` を呼ぶ。ストアの `cancelPendingSignIn()` だけでは部品が送信中のまま残るため、部品側の口にした。ストアで取りやめられた結果（`cancelled`）は失敗として表示しない。
 
 **Dependencies**: Inbound — markn のダイアログまたはアプリのページ（P0）。Outbound — AuthStore、文言解決、svelte-ui（P0/P1）。
 
 **Contracts**: State ✓
 
 ```typescript
-type AddAccountMode = 'sign-in' | 'sign-up' | 'password-reset';
-
 interface AddAccountProps {
 	readonly store: AuthStore;
 	readonly messages?: AuthMessagesOverride;
 	readonly onCompleted?: (account: AccountSummary) => void;
 	readonly onCancel?: () => void; // 中の取りやめのボタンが押されたとき
-	readonly passwordReset?: boolean; // 再設定への導線。既定は出す
-	readonly signUp?: boolean; // 登録への導線。既定は出す（自由登録の可否とも掛け合わせる）
 	readonly actions?: boolean; // 取りやめ・送信のボタンを中に描くか。既定は描く
 	readonly id?: string; // フォームの id。外の `<button type="submit" form={id}>` から送信する
 	isSubmitting?: boolean; // $bindable。送信中
-	mode?: AddAccountMode; // $bindable。いまの表示。'sign-in' を書けばサインインへ戻る
 }
 // 公開するメソッド: cancel()。送信中の試行を無効にする。中のボタンを描かない組み込み側が、閉じるときに呼ぶ
 ```

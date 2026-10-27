@@ -80,7 +80,7 @@ export type {
 - **TypeScript ファイル**: kebab-case。ただし store と models 配下は camelCase + 用途サフィックス（`auth.svelte.ts` / `auth.types.ts`）
 - **型**: PascalCase（`AuthStore`, `AuthErrorKind`）
 - **コンポーネント名に `Screen` のような種別のサフィックスを付けない。** 画面として出すものは名前で言い直しても情報が増えない。出自は import 文が示す（組み込み側は自分の画面を `*Page` などで名付けている）
-- **画面の props の型は `AuthBaseProps` に一本化する。** 画面ごとの差分が無いため、`<コンポーネント名>Props` を作らない。画面以外のコンポーネントの props は `<コンポーネント名>Props`（`AuthGateProps`）
+- **画面の props の型は `AuthBaseProps` を共通にする。** 画面ごとの差分が無い画面は `AuthBaseProps` をそのまま使い、`<コンポーネント名>Props` を作らない。差分が出た画面だけ、`AuthBaseProps` を拡げた `<コンポーネント名>Props` を持つ（`PasswordResetProps`）。画面以外のコンポーネントの props は `<コンポーネント名>Props`（`AuthGateProps`）
 
 ## 型定義の規約（重要）
 
