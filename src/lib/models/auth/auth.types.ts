@@ -414,25 +414,11 @@ export interface AuthMessages {
 	/** 確認待ちと再設定の、どちらの送信の後にも出す */
 	readonly checkSpam: string;
 
-	// アカウントの追加と選択
-	/** アカウントの一覧の読み上げ名 */
-	readonly accountListLabel: string;
-	/** 選択中であることを、色に頼らず文字で示す */
-	readonly accountActive: string;
-	readonly addAccount: string;
-	/** 1件のログアウトの読み上げ名。どのアカウントが対象かを含める */
-	readonly signOutAccountLabel: (email: string) => string;
-	readonly signOutAll: string;
-	readonly noAccounts: string;
-	/** ブラウザの保存領域を使えず、再読み込み後に復元できないかもしれない */
-	readonly storageUnavailable: string;
+	// アカウントの操作の失敗
 	readonly accountLimitReached: string;
 	readonly operationBusy: string;
 	/** 切り替えようとしたアカウントのログイン状態が失われている */
 	readonly accountUnavailable: string;
-	/** 対象のアカウントが分かる失敗の案内。`reason` は失敗の理由の文 */
-	readonly selectFailed: (email: string, reason: string) => string;
-	readonly signOutFailed: (email: string, reason: string) => string;
 
 	/** 語彙ごとの既定の案内。語彙を増やすと、既定の文言を足すまで型検査が通らない */
 	readonly errors: Readonly<Record<AuthErrorKind, string>>;

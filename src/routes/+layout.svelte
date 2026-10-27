@@ -1,16 +1,9 @@
 <script lang="ts">
 	import '@14ch/svelte-ui/styles';
 	import { setContext, type Snippet } from 'svelte';
-	import { Dialog, PopupMenuButton } from '@14ch/svelte-ui';
+	import { Button, Dialog, PopupMenuButton } from '@14ch/svelte-ui';
 	import { page } from '$app/state';
-	import {
-		AccountChooser,
-		AddAccount,
-		AuthGate,
-		AuthSession,
-		createAuthStore,
-		type AuthConfig
-	} from '$lib/index';
+	import { AddAccount, AuthGate, AuthSession, createAuthStore, type AuthConfig } from '$lib/index';
 	import { auth } from './firebase';
 
 	let { children }: { children: Snippet } = $props();
@@ -55,9 +48,9 @@
 	);
 
 	// 選択中のアカウントからログアウトして他のアカウントが残ったら、選択ダイアログを出す。
-	// 自動では選ばない
+	// 自動では選ばない。全件のログアウトの途中など、操作の実行中に一時的に未選択になっても出さない
 	$effect(() => {
-		if (store.stage === 'account-unselected' && !isOnSignInRoute) {
+		if (store.stage === 'account-unselected' && !isOnSignInRoute && store.operation === null) {
 			chooserDialog?.open();
 		} else {
 			chooserDialog?.close();
@@ -132,13 +125,19 @@
 		ariaLabel="使うアカウントを選んでください"
 		closeIfClickOutside={false}
 	>
-		<AccountChooser
-			{store}
-			onAddRequested={() => {
-				chooserDialog?.close();
-				addDialog?.open();
-			}}
-		/>
+		<!-- 次に使うアカウントを選ぶだけの場。ストアの一覧と selectAccount で組み込み側が作る -->
+		<div class="showcase__chooser">
+			{#each store.accounts as account (account.id)}
+				<Button
+					fullWidth
+					align="left"
+					onclick={() => void store.selectAccount(account.id)}
+					disabled={store.operation !== null}
+				>
+					{account.email ?? account.uid}
+				</Button>
+			{/each}
+		</div>
 	</Dialog>
 
 	<Dialog
@@ -149,13 +148,7 @@
 		<AddAccount
 			{store}
 			onCompleted={() => addDialog?.close()}
-			onCancel={() => {
-				addDialog?.close();
-				// 選択ダイアログから来て取りやめたら、選択へ戻す
-				if (store.stage === 'account-unselected' && !isOnSignInRoute) {
-					chooserDialog?.open();
-				}
-			}}
+			onCancel={() => addDialog?.close()}
 		/>
 	</Dialog>
 {/if}
@@ -173,6 +166,12 @@
 		max-width: 26rem;
 		margin: 0 auto;
 		padding: 2rem 1rem;
+	}
+
+	.showcase__chooser {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
 	.showcase__pending {

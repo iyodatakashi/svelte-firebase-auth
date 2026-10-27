@@ -18,10 +18,8 @@ export { default as PasswordChange } from './components/PasswordChange.svelte';
 export { default as PasswordReset } from './components/PasswordReset.svelte';
 
 export { default as AddAccount } from './components/AddAccount.svelte';
-export { default as AccountChooser } from './components/AccountChooser.svelte';
 
 export type {
-	AccountChooserProps,
 	AccountFailure,
 	AccountOperation,
 	AccountOperationError,

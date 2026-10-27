@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import * as surface from '$lib/index';
 import {
-	AccountChooser,
 	AddAccount,
 	AuthGate,
 	AuthSession,
@@ -13,7 +12,6 @@ import {
 	SignUp,
 	VerifyEmail,
 	createAuthStore,
-	type AccountChooserProps,
 	type AccountFailure,
 	type AccountOperation,
 	type AccountOperationError,
@@ -79,8 +77,8 @@ describe('公開面 — 要件 1.3, 1.5', () => {
 });
 
 describe('複数アカウントの公開面 — 要件 7.2, 7.9（multi-account-auth）', () => {
-	it('ブラウザ保存の部品・追加ログイン・アカウント選択を、同じ入口から取り出せる', () => {
-		for (const component of [AuthSession, AddAccount, AccountChooser]) {
+	it('ブラウザ保存の部品・追加ログインを、同じ入口から取り出せる', () => {
+		for (const component of [AuthSession, AddAccount]) {
 			expect(component).toBeDefined();
 		}
 		expect(accountErrorMessageOf).toBeTypeOf('function');
@@ -117,10 +115,9 @@ describe('複数アカウントの公開面 — 要件 7.2, 7.9（multi-account-
 		const operation: AccountOperation = { kind: 'select', id: account.id };
 		const status: StorageStatus = 'available';
 		const { store } = fakeStore();
-		const props: [AuthSessionProps, AddAccountProps, AccountChooserProps] = [
+		const props: [AuthSessionProps, AddAccountProps] = [
 			{ store, namespace: 'app' },
-			{ store, onCompleted: (completed) => completed.id },
-			{ store, onAddRequested: () => {} }
+			{ store, onCompleted: (completed) => completed.id }
 		];
 
 		expect([result.ok, all.ok, operation.kind, status, props.length]).toEqual([
@@ -128,7 +125,7 @@ describe('複数アカウントの公開面 — 要件 7.2, 7.9（multi-account-
 			false,
 			'select',
 			'available',
-			3
+			2
 		]);
 	});
 });

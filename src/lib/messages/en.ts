@@ -43,19 +43,9 @@ export const enMessages: AuthMessages = {
 
 	checkSpam: 'If you cannot find the email, check your spam folder as well.',
 
-	accountListLabel: 'Signed-in accounts',
-	accountActive: 'In use',
-	addAccount: 'Sign in to another account',
-	signOutAccountLabel: (email) => `Sign out of ${email}`,
-	signOutAll: 'Sign out of all accounts',
-	noAccounts: 'No accounts are signed in.',
-	storageUnavailable:
-		'This browser cannot save your sign-in. After reloading, you may need to sign in again.',
 	accountLimitReached: 'You cannot add more accounts.',
 	operationBusy: 'Another action is in progress. Try again when it finishes.',
 	accountUnavailable: 'You need to sign in to this account again.',
-	selectFailed: (email, reason) => `Could not switch to ${email}. ${reason}`,
-	signOutFailed: (email, reason) => `Could not sign out of ${email}. ${reason}`,
 
 	errors: {
 		'invalid-credential': 'The email address or password is incorrect.',

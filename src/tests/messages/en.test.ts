@@ -30,24 +30,13 @@ describe('enMessages — 要件 9.4', () => {
 	});
 
 	it('訳し漏れを残さない。日本語の文字を含まない', () => {
-		const {
-			errors,
-			verifyEmailSentTo,
-			weakPasswordReason,
-			signOutAccountLabel,
-			selectFailed,
-			signOutFailed,
-			...rest
-		} = enMessages;
+		const { errors, verifyEmailSentTo, weakPasswordReason, ...rest } = enMessages;
 		const texts = [
 			...Object.values(rest),
 			...Object.values(errors),
 			verifyEmailSentTo('a@example.com'),
 			weakPasswordReason([]),
-			weakPasswordReason(['min-length', 'uppercase']),
-			signOutAccountLabel('a@example.com'),
-			selectFailed('a@example.com', 'reason.'),
-			signOutFailed('a@example.com', 'reason.')
+			weakPasswordReason(['min-length', 'uppercase'])
 		];
 		for (const text of texts) {
 			expect(text).not.toMatch(/[\u3040-\u30ff\u4e00-\u9fff]/);
@@ -58,11 +47,5 @@ describe('enMessages — 要件 9.4', () => {
 describe('enMessages の追加と選択の文言 — 要件 7.4（multi-account-auth）', () => {
 	it('日本語と同じ項目をすべて持つ', () => {
 		expect(Object.keys(enMessages).sort()).toEqual(Object.keys(jaMessages).sort());
-	});
-
-	it('対象のアカウントが分かる案内を作る', () => {
-		expect(enMessages.signOutFailed('a@example.com', 'Try again.')).toContain('a@example.com');
-		expect(enMessages.selectFailed('a@example.com', 'Try again.')).toContain('a@example.com');
-		expect(enMessages.signOutAccountLabel('a@example.com')).toContain('a@example.com');
 	});
 });
