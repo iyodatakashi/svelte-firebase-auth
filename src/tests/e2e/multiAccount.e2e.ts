@@ -44,21 +44,32 @@ const holdTwoAccounts = async (page: Page, label: string) => {
 	return { a, b };
 };
 
+/** さらに C を追加する。C が選ばれた状態で返る */
+const holdThreeAccounts = async (page: Page, label: string) => {
+	const { a, b } = await holdTwoAccounts(page, label);
+	const c = await createVerifiedUser(page.request, uniqueEmail(`${label}-c`));
+	await addFromMenu(page, c);
+	await signedInAs(page, c);
+	return { a, b, c };
+};
+
 test('メニューから追加・直接切り替え・使用中のログアウト・残りの選択・全件ログアウト・再読み込み — 要件 1.4, 2.1, 2.2, 3.1, 5.4, 5.8, 6.3, 6.9, 7.8', async ({
 	page
 }) => {
-	const { a, b } = await holdTwoAccounts(page, 'menu');
+	const { a, b } = await holdThreeAccounts(page, 'menu');
 
 	// 項目を選ぶだけで直接切り替える
 	await chooseFromMenu(page, a);
 	await signedInAs(page, a);
 
-	// 使用中の A からログアウトすると、残った B を自動で選ばず、選択ダイアログが出る
+	// 使用中の A からログアウトすると、2件残った B・C を自動で選ばず、選択ダイアログが出る
 	await chooseFromMenu(page, `${a} からサインアウト`);
 	const chooser = page.getByRole('dialog', { name: '使うアカウントを選んでください' });
 	await expect(chooser).toBeVisible();
 	await expect(main(page).getByRole('heading', { name: 'サインイン済み' })).toBeHidden();
 	await expect(chooser.getByRole('button', { name: new RegExp(`^${a}`) })).toHaveCount(0);
+	// 選ぶだけの場であり、サインアウトや追加の操作は出さない
+	await expect(chooser.getByRole('button', { name: /サインアウト/ })).toHaveCount(0);
 
 	// 残った B を選ぶと、保護された内容が B のものとして出る
 	await chooser.getByRole('button', { name: b, exact: true }).click();
@@ -74,6 +85,19 @@ test('メニューから追加・直接切り替え・使用中のログアウ�
 	await expect(page).toHaveURL('/signin');
 	await page.reload();
 	await expect(page).toHaveURL('/signin');
+});
+
+test('使用中のアカウントからログアウトして1件だけ残れば、それを選ぶ — 要件 5.4', async ({
+	page
+}) => {
+	const { a, b } = await holdTwoAccounts(page, 'sole');
+
+	await chooseFromMenu(page, `${b} からサインアウト`);
+
+	await expect(page.getByRole('dialog', { name: '使うアカウントを選んでください' })).toBeHidden();
+	await signedInAs(page, a);
+	await page.reload();
+	await signedInAs(page, a);
 });
 
 test('土台の App の Firestore が、選択中のアカウントとして読み書きする — 要件 3.2, 7.7', async ({
@@ -117,9 +141,10 @@ test('2つのタブの選択は独立し、一方の切り替え・ログアウ�
 	await page.reload();
 	await signedInAs(page, a);
 
-	// 新しいタブで、元のタブでは選んでいない B からログアウトしても、元のタブは A のまま
+	// 新しいタブで、元のタブでは選んでいない B からログアウトしても、元のタブは A のまま。
+	// 新しいタブは、1件だけ残った A を選ぶ
 	await chooseFromMenu(other, `${b} からサインアウト`);
-	await expect(other.getByRole('dialog', { name: '使うアカウントを選んでください' })).toBeVisible();
+	await signedInAs(other, a);
 	await signedInAs(page, a);
 	await page.getByRole('button', { name: 'アカウントのメニュー' }).click();
 	await expect(page.getByRole('menuitem', { name: b, exact: true })).toHaveCount(0);
@@ -155,20 +180,21 @@ test('新しいタブは、元のタブから開けばその選択を、独立�
 test('未選択のままサインインの経路でサインインすると、選ばれて戻り先へ進む — 要件 6.1, 6.7', async ({
 	page
 }) => {
-	const { b } = await holdTwoAccounts(page, 'unselected-sign-in');
-	await chooseFromMenu(page, `${b} からサインアウト`);
+	const { c } = await holdThreeAccounts(page, 'unselected-sign-in');
+	await chooseFromMenu(page, `${c} からサインアウト`);
 	await expect(page.getByRole('dialog', { name: '使うアカウントを選んでください' })).toBeVisible();
 
 	// 保護された経路を開いても、内容は出ずに選択を待つ
 	await page.goto('/password-change');
+	await expect(page.getByRole('dialog', { name: '使うアカウントを選んでください' })).toBeVisible();
 	await expect(page).toHaveURL('/password-change');
 	await expect(main(page).getByLabel('現在のパスワード')).toBeHidden();
 
 	// サインインの経路からは、他のアカウントがあっても追い出されずにサインインできる
 	await page.goto('/signin');
 	await expect(page.getByRole('dialog')).toBeHidden();
-	const c = await createVerifiedUser(page.request, uniqueEmail('unselected-sign-in-c'));
-	await submitSignIn(page, c);
+	const d = await createVerifiedUser(page.request, uniqueEmail('unselected-sign-in-d'));
+	await submitSignIn(page, d);
 
 	await expect(page).toHaveURL('/password-change');
 	await expect(main(page).getByLabel('現在のパスワード')).toBeVisible();
@@ -206,9 +232,40 @@ test('確認待ちの画面のサインアウトは、選択中のアカウン�
 	await signUpFromMenu(page, uniqueEmail('leave'));
 	await main(page).getByRole('button', { name: 'サインアウト' }).click();
 
-	// 残ったアカウントは自動で選ばれず、選択を求められる
-	const chooser = page.getByRole('dialog', { name: '使うアカウントを選んでください' });
-	await expect(chooser).toBeVisible();
-	await chooser.getByRole('button', { name: verified, exact: true }).click();
+	// ログアウトしたのは確認待ちのアカウントだけ。1件だけ残ったアカウントが選ばれる
+	await expect(page).toHaveURL('/');
 	await signedInAs(page, verified);
+});
+
+test('A が開いていた経路を、離れた後に B へ引き継がせない — 要件 6.10', async ({ page }) => {
+	const { a, b } = await holdTwoAccounts(page, 'owned-return');
+	await chooseFromMenu(page, a);
+	await signedInAs(page, a);
+	await main(page).getByRole('button', { name: 'パスワードを変更する' }).click();
+	await expect(main(page).getByLabel('現在のパスワード')).toBeVisible();
+
+	// A の画面を開いたまま A からログアウトすると、1件だけ残った B が選ばれ、既定の行き先へ進む
+	await chooseFromMenu(page, `${a} からサインアウト`);
+	await expect(page).toHaveURL('/');
+	await signedInAs(page, b);
+});
+
+test('A が開いていた経路へは、サインインし直した A だけが戻る — 要件 6.10', async ({ page }) => {
+	const { a, b } = await holdTwoAccounts(page, 'owned-sign-in');
+	await chooseFromMenu(page, a);
+	await main(page).getByRole('button', { name: 'パスワードを変更する' }).click();
+	await expect(main(page).getByLabel('現在のパスワード')).toBeVisible();
+
+	// 全件ログアウトでサインインへ。A でサインインし直すと、A が開いていた経路へ戻る
+	await chooseFromMenu(page, 'すべてのアカウントからサインアウト');
+	await expect(page).toHaveURL('/signin');
+	await submitSignIn(page, a);
+	await expect(page).toHaveURL('/password-change');
+
+	// もう一度 A がその経路から離れ、今度は B でサインインすると、既定の行き先へ進む
+	await chooseFromMenu(page, 'すべてのアカウントからサインアウト');
+	await expect(page).toHaveURL('/signin');
+	await submitSignIn(page, b);
+	await expect(page).toHaveURL('/');
+	await signedInAs(page, b);
 });
