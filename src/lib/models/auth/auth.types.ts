@@ -462,8 +462,20 @@ export interface AuthBaseProps {
 	readonly onCompleted?: () => void;
 }
 
-/** 追加ログインの表示。同じ領域の中で切り替える */
-export type AddAccountMode = 'sign-in' | 'sign-up' | 'password-reset';
+/**
+ * パスワードの再設定の画面の props。既定では送信のボタンとサインインへ戻る導線を中に描く。
+ * ダイアログに置く組み込み側は、送信をフッターに置き、行き来も自分で決められる
+ */
+export interface PasswordResetProps extends AuthBaseProps {
+	/** 送信のボタンとサインインへ戻る導線を中に描くか。既定は描く */
+	readonly actions?: boolean;
+	/** フォームの id。組み込み側が外に置いた送信ボタンから送信するのに使う */
+	readonly id?: string;
+	/** 送信中か。`bind:isSubmitting` で読む */
+	isSubmitting?: boolean;
+	/** 試行が続いて受け付けられなくなったか。`bind:isBlocked` で読む */
+	isBlocked?: boolean;
+}
 
 /**
  * 別のアカウントでのサインインの中身。ダイアログの外枠・見出し・開閉は持たない。

@@ -41,6 +41,7 @@ export type {
 	AuthStore,
 	CreateAuthStore,
 	PasswordRequirement,
+	PasswordResetProps,
 	SignOutAllResult,
 	StorageStatus
 } from './models/auth/auth.types';

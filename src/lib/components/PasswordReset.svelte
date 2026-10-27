@@ -3,18 +3,24 @@
 	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
-	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
+	import type { PasswordResetProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
+	let {
+		store,
+		messages: overrides,
+		onCompleted,
+		actions = true,
+		id,
+		isSubmitting = $bindable(false),
+		// 受け付けられなくなった要求を、押せる状態のまま失敗させ続けない
+		isBlocked = $bindable(false)
+	}: PasswordResetProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
 	let email = $state('');
 	let errorMessage = $state<string | null>(null);
 	let hasRequested = $state(false);
-	// 受け付けられなくなった要求を、押せる状態のまま失敗させ続けない
-	let isBlocked = $state(false);
-	let isSubmitting = $state(false);
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault();
@@ -45,7 +51,7 @@
 		<p class="password-reset__description">{messages.passwordResetDescription}</p>
 	</div>
 
-	<form class="password-reset__form" onsubmit={submit} novalidate>
+	<form {id} class="password-reset__form" onsubmit={submit} novalidate>
 		<div class="password-reset__fields">
 			<Input
 				id="password-reset-email"
@@ -69,24 +75,30 @@
 			<p class="password-reset__error" role="alert">{errorMessage}</p>
 		{/if}
 
-		<div class="password-reset__actions">
-			<Button
-				type="submit"
-				variant="filled"
-				fullWidth
-				loading={isSubmitting}
-				disabled={isSubmitting || isBlocked}
-			>
-				{messages.passwordResetSubmit}
-			</Button>
-		</div>
+		<!-- 組み込み側が送信をフッターに置くときは描かない -->
+		{#if actions}
+			<div class="password-reset__actions">
+				<Button
+					type="submit"
+					variant="filled"
+					fullWidth
+					loading={isSubmitting}
+					disabled={isSubmitting || isBlocked}
+				>
+					{messages.passwordResetSubmit}
+				</Button>
+			</div>
+		{/if}
 	</form>
 
-	<div class="password-reset__links">
-		<Button fullWidth onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
-			{messages.backToSignIn}
-		</Button>
-	</div>
+	<!-- サインインへ戻る導線はページを移る。ダイアログに置く組み込み側は、行き来を自分で決める -->
+	{#if actions}
+		<div class="password-reset__links">
+			<Button fullWidth onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
+				{messages.backToSignIn}
+			</Button>
+		</div>
+	{/if}
 </section>
 
 <style>

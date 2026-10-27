@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import type { Component } from 'svelte';
 import * as surface from '$lib/index';
 import {
 	AddAccount,
@@ -32,7 +33,14 @@ describe('公開面 — 要件 1.3, 1.5', () => {
 	it('単一の入口から、到達の制御・生成関数・5画面を取り出せる', () => {
 		expect(AuthGate).toBeDefined();
 		expect(createAuthStore).toBeTypeOf('function');
-		for (const screen of [SignIn, SignUp, VerifyEmail, PasswordChange, PasswordReset]) {
+		const screens: Component<AuthBaseProps>[] = [
+			SignIn,
+			SignUp,
+			VerifyEmail,
+			PasswordChange,
+			PasswordReset
+		];
+		for (const screen of screens) {
 			expect(screen).toBeDefined();
 		}
 	});
@@ -48,7 +56,14 @@ describe('公開面 — 要件 1.3, 1.5', () => {
 	});
 
 	it('各画面は題字などのページの要素を持たない。置く側が決めるため', async () => {
-		for (const screen of [SignIn, SignUp, VerifyEmail, PasswordChange, PasswordReset]) {
+		const screens: Component<AuthBaseProps>[] = [
+			SignIn,
+			SignUp,
+			VerifyEmail,
+			PasswordChange,
+			PasswordReset
+		];
+		for (const screen of screens) {
 			const { store } = fakeStore();
 			const rendered = await render(screen, { props: { store } });
 
