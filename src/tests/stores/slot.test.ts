@@ -52,10 +52,9 @@ describe('公開する状態 — 要件 2.1, 2.2, 2.4, 2.5, 2.6, 2.7', () => {
 		expect(store.user).not.toBeNull();
 	});
 
-	it('確認済みかどうかを公開する', () => {
-		const store = createSlotStore(fakeAuth(), config);
-		store.start();
-		emitAuthState(fakeUser({ emailVerified: true }));
+	it('確認済みかどうかを公開する', async () => {
+		const store = createSlotStore(fakeAuth(fakeUser({ emailVerified: true })), config);
+		await store.start();
 		expect(store.isEmailVerified).toBe(true);
 	});
 });
@@ -408,5 +407,48 @@ describe('メールアドレスの確認を求めるかどうか — 要件 1.11
 		const store = createSlotStore(fakeAuth(fakeUser()), withoutVerification);
 		expect((await store.sendEmailVerification()).ok).toBe(true);
 		expect(firebaseAuthMock.sendEmailVerification).toHaveBeenCalledOnce();
+	});
+});
+
+describe('復元した利用者の確認済みと ID トークンの印をそろえる（multi-account-auth の組み込み）', () => {
+	it('利用者が確認済みで印が未確認なら、印を取り直してから初回の判定を済ませる', async () => {
+		const restored = fakeUser({ emailVerified: true });
+		firebaseAuthMock.getIdTokenResult.mockResolvedValueOnce({ claims: { email_verified: false } });
+		const store = createSlotStore(fakeAuth(restored), config);
+		let isResolvedWhenRefreshed: boolean | null = null;
+		firebaseAuthMock.getIdToken.mockImplementationOnce(async () => {
+			isResolvedWhenRefreshed = store.isResolved;
+			return 'token';
+		});
+
+		await store.start();
+
+		expect(firebaseAuthMock.getIdToken).toHaveBeenCalledWith(restored, true);
+		expect(isResolvedWhenRefreshed).toBe(false);
+		expect(store.isEmailVerified).toBe(true);
+	});
+
+	it('印も確認済みなら、取り直さない', async () => {
+		const store = createSlotStore(fakeAuth(fakeUser({ emailVerified: true })), config);
+		await store.start();
+
+		expect(firebaseAuthMock.getIdToken).not.toHaveBeenCalled();
+		expect(store.isEmailVerified).toBe(true);
+	});
+
+	it('利用者が未確認なら、印を調べない', async () => {
+		const store = createSlotStore(fakeAuth(fakeUser({ emailVerified: false })), config);
+		await store.start();
+
+		expect(firebaseAuthMock.getIdTokenResult).not.toHaveBeenCalled();
+	});
+
+	it('印を取り直せなくても、初回の判定は済ませる', async () => {
+		firebaseAuthMock.getIdTokenResult.mockResolvedValueOnce({ claims: { email_verified: false } });
+		firebaseAuthMock.getIdToken.mockRejectedValueOnce(new Error('network'));
+		const store = createSlotStore(fakeAuth(fakeUser({ emailVerified: true })), config);
+		await store.start();
+
+		expect(store.isResolved).toBe(true);
 	});
 });

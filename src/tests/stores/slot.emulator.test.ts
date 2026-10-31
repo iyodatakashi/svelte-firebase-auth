@@ -1,9 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getIdTokenResult, signInWithEmailAndPassword } from 'firebase/auth';
+import { getIdTokenResult, reload, signInWithEmailAndPassword } from 'firebase/auth';
 import type { Auth } from 'firebase/auth';
 import { createSlotStore } from '$lib/stores/slot.svelte';
 import type { SlotStore } from '$lib/models/auth/auth.types';
-import { clearEmulatorUsers, createEmulatorAuth, fetchOobCodes } from '../support/emulator';
+import {
+	clearEmulatorUsers,
+	createEmulatorAuth,
+	createEmulatorUser,
+	fetchOobCodes,
+	markEmulatorUserVerified
+} from '../support/emulator';
 
 const config = {
 	selfRegistration: true,
@@ -140,5 +146,25 @@ describe('メールアドレスの確認を求めない組み込み先 — 要�
 
 		notRequiring.stop();
 		await disposeOther();
+	});
+});
+
+describe('復元した利用者の確認済みと ID トークンの印をそろえる（multi-account-auth の組み込み）', () => {
+	it('確認済みになった利用者を復元すると、開始の時点で印も確認済みになっている', async () => {
+		store.stop();
+		const email = 'restored@example.com';
+		const uid = await createEmulatorUser(email, 'secret-password');
+		const credential = await signInWithEmailAndPassword(auth, email, 'secret-password');
+		await markEmulatorUserVerified(uid);
+		// Firebase が復元のときに行う取り直しと同じく、利用者の情報だけを取り直す
+		await reload(credential.user);
+		expect(credential.user.emailVerified).toBe(true);
+		expect((await getIdTokenResult(credential.user)).claims.email_verified).toBeFalsy();
+
+		store = createSlotStore(auth, config);
+		await store.start();
+
+		expect(store.isEmailVerified).toBe(true);
+		expect(await emailVerifiedClaim(auth)).toBe(true);
 	});
 });

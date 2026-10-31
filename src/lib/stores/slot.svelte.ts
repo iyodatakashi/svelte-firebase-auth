@@ -2,6 +2,7 @@ import {
 	EmailAuthProvider,
 	createUserWithEmailAndPassword,
 	getIdToken,
+	getIdTokenResult,
 	onAuthStateChanged,
 	reauthenticateWithCredential,
 	reload,
@@ -46,14 +47,44 @@ export const createSlotStore = (
 	const start = (): Promise<void> => {
 		stop();
 		return new Promise((resolve) => {
-			unsubscribe = onAuthStateChanged(auth, (next) => {
+			const apply = (next: User | null) => {
 				user = next;
 				isEmailVerified = next?.emailVerified ?? false;
 				isResolved = true;
 				resolve();
 				onChanged?.(next);
-			});
+			};
+			const listener = (next: User | null) => {
+				if (!next?.emailVerified) {
+					apply(next);
+					return;
+				}
+				void alignClaimWithVerification(next).then(() => {
+					// 揃えている間に購読をやめたか、別の利用者に替わっていれば反映しない
+					if (unsubscribe === stopListening && auth.currentUser === next) {
+						apply(next);
+					}
+				});
+			};
+			const stopListening = onAuthStateChanged(auth, listener);
+			unsubscribe = stopListening;
 		});
+	};
+
+	/**
+	 * 利用者の情報が確認済みなのに ID トークンの印が未確認なら、印を取り直す。
+	 * Firebase は保存された利用者を復元するとき利用者の情報だけを取り直し、印は期限まで古いまま使う。
+	 * 段階を通過させる時点で、組み込み側のアクセス制御が見る印も確認済みにしておく
+	 */
+	const alignClaimWithVerification = async (current: User): Promise<void> => {
+		try {
+			const { claims } = await getIdTokenResult(current);
+			if (claims.email_verified !== true) {
+				await getIdToken(current, true);
+			}
+		} catch {
+			// 取り直せなくても判定は止めない。印は期限で新しくなる
+		}
 	};
 
 	const stop = (): void => {

@@ -116,6 +116,10 @@ export const firebaseAuthMock = {
 	updatePassword: vi.fn(async () => undefined),
 	reload: vi.fn<(user: User) => Promise<void>>(async () => undefined),
 	getIdToken: vi.fn(async () => 'token'),
+	// 既定では、ID トークンの印は利用者の情報と一致している
+	getIdTokenResult: vi.fn(async (user: User) => ({
+		claims: { email_verified: user.emailVerified }
+	})),
 	validatePassword: vi.fn(
 		async (): Promise<PasswordValidationStatus> => ({ isValid: false }) as PasswordValidationStatus
 	),

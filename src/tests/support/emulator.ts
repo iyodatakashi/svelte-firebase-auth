@@ -85,3 +85,18 @@ export const fetchOobCodes = async (): Promise<readonly OobCode[]> => {
 	const body: { oobCodes?: OobCode[] } = await response.json();
 	return body.oobCodes ?? [];
 };
+
+/** 別のセッションで確認を済ませたことにする。クライアントには知らせない */
+export const markEmulatorUserVerified = async (uid: string): Promise<void> => {
+	const response = await fetch(
+		`${emulatorOrigin()}/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:update`,
+		{
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+			body: JSON.stringify({ localId: uid, emailVerified: true })
+		}
+	);
+	if (!response.ok) {
+		throw new Error(`確認済みにできなかった: ${response.status}`);
+	}
+};
