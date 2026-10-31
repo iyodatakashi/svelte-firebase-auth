@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '$lib/assets/styles/variables.css';
 	import { untrack } from 'svelte';
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { goto } from '$app/navigation';
@@ -127,12 +128,12 @@
 <style>
 	/*
 		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
-		いずれも継承するため、組み込み側は包む要素に1度書けば全画面に効く
+		値は $lib/assets/styles/variables.css が決める
 	*/
 	.password-change {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-block-gap, 32px);
+		gap: var(--auth-block-gap);
 		color: var(--svelte-ui-text-color);
 	}
 
@@ -140,19 +141,19 @@
 	.password-change__form {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-block-gap, 32px);
+		gap: var(--auth-block-gap);
 	}
 
 	.password-change__fields {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap, 16px);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-change__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--auth-inner-gap, 16px);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-change__notice {

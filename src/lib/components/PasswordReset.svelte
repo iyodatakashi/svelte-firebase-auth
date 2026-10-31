@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '$lib/assets/styles/variables.css';
 	import { Button, Input } from '@14ch/svelte-ui';
 	import { goto } from '$app/navigation';
 	import { authErrorMessageOf } from '$lib/messages/authErrorMessage';
@@ -104,12 +105,12 @@
 <style>
 	/*
 		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
-		いずれも継承するため、組み込み側は包む要素に1度書けば全画面に効く
+		値は $lib/assets/styles/variables.css が決める
 	*/
 	.password-reset {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-block-gap, 32px);
+		gap: var(--auth-block-gap);
 		color: var(--svelte-ui-text-color);
 	}
 
@@ -117,7 +118,7 @@
 	.password-reset__lead {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap, 16px);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-reset__lead p {
@@ -128,20 +129,20 @@
 	.password-reset__form {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-block-gap, 32px);
+		gap: var(--auth-block-gap);
 	}
 
 	.password-reset__fields {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap, 16px);
+		gap: var(--auth-inner-gap);
 	}
 
 	/* 送信できたことの提示。通知と、迷惑メールの案内を1つのまとまりにする */
 	.password-reset__sent {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap, 16px);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-reset__sent p {
@@ -151,13 +152,13 @@
 	.password-reset__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--auth-inner-gap, 16px);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-reset__links {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap, 16px);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-reset__notice {
