@@ -3,12 +3,15 @@ import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import SignUp from '$lib/components/SignUp.svelte';
 import { jaMessages } from '$lib/messages/ja';
+import type { AccountResult, AccountSummary } from '$lib/models/auth/auth.types';
 import {
 	authFailureOf,
+	fakeAccount,
 	fakeRoutes,
 	fakeStore,
 	operationFailureOf
 } from '../support/fakeStore.svelte';
+import SignUpWithFooter from './fixtures/SignUpWithFooter.svelte';
 
 const setup = async () => {
 	const { store } = fakeStore();
@@ -145,5 +148,101 @@ describe('SignUp の結果の型 — 要件 2.6, 7.5（multi-account-auth）', (
 
 		await expect.element(screen.getByText(jaMessages.operationBusy)).toBeInTheDocument();
 		expect(onCompleted).not.toHaveBeenCalled();
+	});
+});
+
+describe('送信と取りやめを組み込み側に置く — 要件 2.6（multi-account-auth）', () => {
+	const setupFooter = async () => {
+		const { store } = fakeStore();
+		const onCompleted = vi.fn();
+		const screen = await render(SignUpWithFooter, { props: { store, onCompleted } });
+		await screen.getByLabelText(jaMessages.email).fill('new@example.com');
+		await screen.getByLabelText(jaMessages.password).fill('secret');
+		return { screen, store, onCompleted };
+	};
+
+	it('ボタンを描かない指定では、送信とページを移る導線を描かず、入力は残す', async () => {
+		const { screen, store } = await setupFooter();
+		vi.mocked(store.signUp).mockResolvedValueOnce(authFailureOf('email-already-in-use'));
+		await screen.getByRole('button', { name: '送る' }).click();
+		await expect
+			.element(screen.getByText(jaMessages.errors['email-already-in-use']))
+			.toBeInTheDocument();
+
+		for (const name of [
+			jaMessages.signUpSubmit,
+			jaMessages.backToSignIn,
+			jaMessages.goToPasswordReset
+		]) {
+			await expect.element(screen.getByRole('button', { name })).not.toBeInTheDocument();
+		}
+	});
+
+	it('組み込み側の送信ボタンから登録できる', async () => {
+		const { screen, store, onCompleted } = await setupFooter();
+		await screen.getByRole('button', { name: '送る' }).click();
+
+		await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledOnce());
+		expect(store.signUp).toHaveBeenCalledWith('new@example.com', 'secret');
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('送信中を組み込み側へ知らせる', async () => {
+		const { screen, store } = await setupFooter();
+		vi.mocked(store.signUp).mockImplementationOnce(() => new Promise(() => {}));
+		await screen.getByRole('button', { name: '送る' }).click();
+
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeDisabled();
+	});
+
+	it('組み込み側から取りやめると、送信中を解き、後から返った結果を反映しない', async () => {
+		const { screen, store, onCompleted } = await setupFooter();
+		let complete: (result: AccountResult<AccountSummary>) => void = () => {};
+		vi.mocked(store.signUp).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		await screen.getByRole('button', { name: '送る' }).click();
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeDisabled();
+
+		await screen.getByRole('button', { name: '閉じる' }).click();
+
+		expect(store.cancelPendingSignIn).toHaveBeenCalledOnce();
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeEnabled();
+		complete({ ok: true, value: fakeAccount() });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(onCompleted).not.toHaveBeenCalled();
+	});
+
+	it('ストアで取りやめられた結果は、失敗として示さない', async () => {
+		const { screen, store } = await setupFooter();
+		vi.mocked(store.signUp).mockResolvedValueOnce(operationFailureOf({ kind: 'cancelled' }));
+		await screen.getByRole('button', { name: '送る' }).click();
+
+		await expect.element(screen.getByRole('button', { name: '送る' })).toBeEnabled();
+		await expect.element(screen.getByRole('alert')).not.toBeInTheDocument();
+	});
+});
+
+describe('SignUp の導線を組み込み側が差し替える（multi-account-auth の組み込み）', () => {
+	it('サインインへ戻る動きを渡されたら、ページを移らずにそれを呼ぶ', async () => {
+		const { store } = fakeStore();
+		const onGoToSignIn = vi.fn();
+		const screen = await render(SignUp, { props: { store, onGoToSignIn } });
+		await screen.getByRole('button', { name: jaMessages.backToSignIn }).click();
+
+		expect(onGoToSignIn).toHaveBeenCalledOnce();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('既に使われているメールアドレスのときの再設定の案内も、渡された動きを呼ぶ', async () => {
+		const { store } = fakeStore();
+		const onGoToPasswordReset = vi.fn();
+		vi.mocked(store.signUp).mockResolvedValueOnce(authFailureOf('email-already-in-use'));
+		const screen = await render(SignUp, { props: { store, onGoToPasswordReset } });
+		await fillAndSubmit(screen);
+		await screen.getByRole('button', { name: jaMessages.goToPasswordReset }).click();
+
+		expect(onGoToPasswordReset).toHaveBeenCalledOnce();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
 	});
 });

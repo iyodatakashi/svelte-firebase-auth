@@ -4,16 +4,26 @@
 	import { goto } from '$app/navigation';
 	import { accountErrorMessageOf } from '$lib/messages/accountErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
-	import type { AccountOperationError, AuthBaseProps } from '$lib/models/auth/auth.types';
+	import type { AccountOperationError, SignUpProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
+	let {
+		store,
+		messages: overrides,
+		onCompleted,
+		actions = true,
+		id,
+		onGoToSignIn,
+		onGoToPasswordReset,
+		isSubmitting = $bindable(false)
+	}: SignUpProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
 	let email = $state('');
 	let password = $state('');
 	let failure = $state<AccountOperationError | null>(null);
-	let isSubmitting = $state(false);
+	/** 送信のたびに替わる。取りやめた送信の結果を表示に反映しない */
+	let attempt: object | null = null;
 
 	const errorMessage = $derived(
 		failure === null ? null : accountErrorMessageOf(failure, messages, 'sign-up')
@@ -28,12 +38,20 @@
 		if (isSubmitting) {
 			return;
 		}
+		const current = {};
+		attempt = current;
 		isSubmitting = true;
 		failure = null;
 
 		const result = await store.signUp(email, password);
+		if (attempt !== current) {
+			return;
+		}
 		isSubmitting = false;
-
+		// ストアで取りやめられた試行は、失敗として示さない
+		if (!result.ok && result.error.kind === 'cancelled') {
+			return;
+		}
 		if (result.ok) {
 			// 遷移しない。段階が変わるため、到達の制御が動かす
 			onCompleted?.();
@@ -41,10 +59,21 @@
 		}
 		failure = result.error;
 	};
+
+	/**
+	 * 取りやめる。送信中の試行を無効にし、後から成功が返っても反映しない。
+	 * 中のボタンを描かない組み込み側は、ダイアログを閉じるときなどにこれを呼ぶ
+	 */
+	export const cancel = (): void => {
+		attempt = null;
+		isSubmitting = false;
+		// Firebase の要求は中断できない。ストアに試行を無効にさせ、後から成功しても反映させない
+		store.cancelPendingSignIn();
+	};
 </script>
 
 <section class="sign-up">
-	<form class="sign-up__form" onsubmit={submit} novalidate>
+	<form {id} class="sign-up__form" onsubmit={submit} novalidate>
 		<div class="sign-up__fields">
 			<Input
 				id="sign-up-email"
@@ -74,29 +103,44 @@
 			<p class="sign-up__error" role="alert">{errorMessage}</p>
 		{/if}
 
-		<div class="sign-up__actions">
-			<Button
-				type="submit"
-				variant="filled"
-				fullWidth
-				loading={isSubmitting}
-				disabled={isSubmitting}
-			>
-				{messages.signUpSubmit}
-			</Button>
-		</div>
+		<!-- 組み込み側が送信をフッターに置くときは描かない -->
+		{#if actions}
+			<div class="sign-up__actions">
+				<Button
+					type="submit"
+					variant="filled"
+					fullWidth
+					loading={isSubmitting}
+					disabled={isSubmitting}
+				>
+					{messages.signUpSubmit}
+				</Button>
+			</div>
+		{/if}
 	</form>
 
-	<div class="sign-up__links">
-		{#if canOfferPasswordReset}
-			<Button fullWidth onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
-				{messages.goToPasswordReset}
+	<!-- ページを移る導線。ダイアログに置く組み込み側は、行き来を自分で決める -->
+	{#if actions}
+		<div class="sign-up__links">
+			{#if canOfferPasswordReset}
+				<Button
+					fullWidth
+					onclick={() =>
+						onGoToPasswordReset ? onGoToPasswordReset() : goto(store.routes.passwordReset)}
+					disabled={isSubmitting}
+				>
+					{messages.goToPasswordReset}
+				</Button>
+			{/if}
+			<Button
+				fullWidth
+				onclick={() => (onGoToSignIn ? onGoToSignIn() : goto(store.routes.signIn))}
+				disabled={isSubmitting}
+			>
+				{messages.backToSignIn}
 			</Button>
-		{/if}
-		<Button fullWidth onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
-			{messages.backToSignIn}
-		</Button>
-	</div>
+		</div>
+	{/if}
 </section>
 
 <style>

@@ -271,3 +271,27 @@ test('A が開いていた経路へは、サインインし直した A だけが
 	await expect(page).toHaveURL('/');
 	await signedInAs(page, b);
 });
+
+test('サインイン済みのまま、メニューから新しいアカウントを登録できる — 要件 2.6', async ({
+	page
+}) => {
+	const a = await createVerifiedUser(page.request, uniqueEmail('register-a'));
+	await page.goto('/signin');
+	await submitSignIn(page, a);
+	await signedInAs(page, a);
+
+	const registered = uniqueEmail('register-new');
+	await chooseFromMenu(page, '新しいアカウントを登録');
+	const dialog = page.getByRole('dialog', { name: '新しいアカウントを登録' });
+	await dialog.getByLabel('メールアドレス').fill(registered);
+	await dialog.getByLabel('パスワード', { exact: true }).fill(PASSWORD);
+	await dialog.getByRole('button', { name: '登録する' }).click();
+
+	// 登録したアカウントが選ばれ、確認待ちへ案内される。元のアカウントもログインしたまま
+	await expect(dialog).toBeHidden();
+	await expect(page).toHaveURL('/verify-email');
+	await chooseFromMenu(page, a);
+	await signedInAs(page, a);
+	await page.getByRole('button', { name: 'アカウントのメニュー' }).click();
+	await expect(page.getByRole('menuitem', { name: registered, exact: true })).toBeVisible();
+});

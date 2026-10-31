@@ -17,15 +17,12 @@ export { default as VerifyEmail } from './components/VerifyEmail.svelte';
 export { default as PasswordChange } from './components/PasswordChange.svelte';
 export { default as PasswordReset } from './components/PasswordReset.svelte';
 
-export { default as AddAccount } from './components/AddAccount.svelte';
-
 export type {
 	AccountFailure,
 	AccountOperation,
 	AccountOperationError,
 	AccountResult,
 	AccountSummary,
-	AddAccountProps,
 	AuthBaseProps,
 	AuthConfig,
 	AuthError,
@@ -42,6 +39,8 @@ export type {
 	CreateAuthStore,
 	PasswordRequirement,
 	PasswordResetProps,
+	SignInProps,
 	SignOutAllResult,
+	SignUpProps,
 	StorageStatus
 } from './models/auth/auth.types';

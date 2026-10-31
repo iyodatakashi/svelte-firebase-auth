@@ -12,6 +12,7 @@
 		onCompleted,
 		actions = true,
 		id,
+		onGoToSignIn,
 		isSubmitting = $bindable(false),
 		// 受け付けられなくなった要求を、押せる状態のまま失敗させ続けない
 		isBlocked = $bindable(false)
@@ -95,7 +96,11 @@
 	<!-- サインインへ戻る導線はページを移る。ダイアログに置く組み込み側は、行き来を自分で決める -->
 	{#if actions}
 		<div class="password-reset__links">
-			<Button fullWidth onclick={() => goto(store.routes.signIn)} disabled={isSubmitting}>
+			<Button
+				fullWidth
+				onclick={() => (onGoToSignIn ? onGoToSignIn() : goto(store.routes.signIn))}
+				disabled={isSubmitting}
+			>
 				{messages.backToSignIn}
 			</Button>
 		</div>

@@ -151,3 +151,15 @@ describe('送信を組み込み側に置く（multi-account-auth の組み込み
 		await expect.element(screen.getByRole('button', { name: '送る' })).toBeDisabled();
 	});
 });
+
+describe('PasswordReset の導線を組み込み側が差し替える（multi-account-auth の組み込み）', () => {
+	it('サインインへ戻る動きを渡されたら、ページを移らずにそれを呼ぶ', async () => {
+		const { store } = fakeStore();
+		const onGoToSignIn = vi.fn();
+		const screen = await render(PasswordReset, { props: { store, onGoToSignIn } });
+		await screen.getByRole('button', { name: jaMessages.backToSignIn }).click();
+
+		expect(onGoToSignIn).toHaveBeenCalledOnce();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+});

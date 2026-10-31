@@ -3,7 +3,6 @@ import { render } from 'vitest-browser-svelte';
 import type { Component } from 'svelte';
 import * as surface from '$lib/index';
 import {
-	AddAccount,
 	AuthGate,
 	AuthSession,
 	accountErrorMessageOf,
@@ -18,7 +17,7 @@ import {
 	type AccountOperationError,
 	type AccountResult,
 	type AccountSummary,
-	type AddAccountProps,
+	type SignInProps,
 	type AuthBaseProps,
 	type AuthGateProps,
 	type AuthRoutes,
@@ -92,8 +91,8 @@ describe('公開面 — 要件 1.3, 1.5', () => {
 });
 
 describe('複数アカウントの公開面 — 要件 7.2, 7.9（multi-account-auth）', () => {
-	it('ブラウザ保存の部品・追加ログインを、同じ入口から取り出せる', () => {
-		for (const component of [AuthSession, AddAccount]) {
+	it('ブラウザ保存の部品を、同じ入口から取り出せる', () => {
+		for (const component of [AuthSession]) {
 			expect(component).toBeDefined();
 		}
 		expect(accountErrorMessageOf).toBeTypeOf('function');
@@ -130,9 +129,9 @@ describe('複数アカウントの公開面 — 要件 7.2, 7.9（multi-account-
 		const operation: AccountOperation = { kind: 'select', id: account.id };
 		const status: StorageStatus = 'available';
 		const { store } = fakeStore();
-		const props: [AuthSessionProps, AddAccountProps] = [
+		const props: [AuthSessionProps, SignInProps] = [
 			{ store, namespace: 'app' },
-			{ store, onCompleted: (completed) => completed.id }
+			{ store, onGoToSignUp: () => {} }
 		];
 
 		expect([result.ok, all.ok, operation.kind, status, props.length]).toEqual([

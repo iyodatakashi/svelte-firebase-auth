@@ -3,7 +3,14 @@
 	import { setContext, type Snippet } from 'svelte';
 	import { Button, Dialog, PopupMenuButton } from '@14ch/svelte-ui';
 	import { page } from '$app/state';
-	import { AddAccount, AuthGate, AuthSession, createAuthStore, type AuthConfig } from '$lib/index';
+	import {
+		AuthGate,
+		AuthSession,
+		SignIn,
+		SignUp,
+		createAuthStore,
+		type AuthConfig
+	} from '$lib/index';
 	import { auth } from './firebase';
 
 	let { children }: { children: Snippet } = $props();
@@ -38,6 +45,10 @@
 	setContext('authStore', store);
 
 	let addDialog: ReturnType<typeof Dialog> | undefined = $state();
+	let signInForm: ReturnType<typeof SignIn> | undefined = $state();
+	let signUpDialog: ReturnType<typeof Dialog> | undefined = $state();
+	let signUpForm: ReturnType<typeof SignUp> | undefined = $state();
+	let isSigningUp = $state(false);
 	let chooserDialog: ReturnType<typeof Dialog> | undefined = $state();
 
 	/** サインイン・登録・再設定の経路。未選択でもここではサインインでき、選択ダイアログで塞がない */
@@ -72,6 +83,11 @@
 		{
 			label: '別のアカウントにログイン',
 			callback: () => addDialog?.open(),
+			disabled: store.operation !== null
+		},
+		{
+			label: '新しいアカウントを登録',
+			callback: () => signUpDialog?.open(),
 			disabled: store.operation !== null
 		},
 		...store.accounts.map((account) => ({
@@ -144,12 +160,47 @@
 		bind:this={addDialog}
 		title="別のアカウントにログイン"
 		ariaLabel="別のアカウントにログイン"
+		onClose={() => signInForm?.cancel()}
 	>
-		<AddAccount
+		<!-- サインイン画面をそのまま置く。登録の導線は、ページを移らずに登録のダイアログを開く -->
+		<SignIn
 			{store}
+			bind:this={signInForm}
 			onCompleted={() => addDialog?.close()}
-			onCancel={() => addDialog?.close()}
+			onGoToSignUp={() => {
+				addDialog?.close();
+				signUpDialog?.open();
+			}}
 		/>
+	</Dialog>
+
+	<!-- 登録の画面をダイアログに置き、送信と取りやめをフッターに出す。閉じたら送信中の試行を無効にする -->
+	<Dialog
+		bind:this={signUpDialog}
+		title="新しいアカウントを登録"
+		ariaLabel="新しいアカウントを登録"
+		onClose={() => signUpForm?.cancel()}
+	>
+		<SignUp
+			{store}
+			bind:this={signUpForm}
+			bind:isSubmitting={isSigningUp}
+			id="showcase-sign-up"
+			actions={false}
+			onCompleted={() => signUpDialog?.close()}
+		/>
+		{#snippet footer()}
+			<Button onclick={() => signUpDialog?.close()}>キャンセル</Button>
+			<Button
+				type="submit"
+				form="showcase-sign-up"
+				variant="filled"
+				loading={isSigningUp}
+				disabled={isSigningUp}
+			>
+				登録する
+			</Button>
+		{/snippet}
 	</Dialog>
 {/if}
 

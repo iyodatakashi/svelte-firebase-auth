@@ -4,9 +4,15 @@
 	import { goto } from '$app/navigation';
 	import { accountErrorMessageOf } from '$lib/messages/accountErrorMessage';
 	import { resolveMessages } from '$lib/messages/resolveMessages';
-	import type { AuthBaseProps } from '$lib/models/auth/auth.types';
+	import type { SignInProps } from '$lib/models/auth/auth.types';
 
-	let { store, messages: overrides, onCompleted }: AuthBaseProps = $props();
+	let {
+		store,
+		messages: overrides,
+		onCompleted,
+		onGoToSignUp,
+		onGoToPasswordReset
+	}: SignInProps = $props();
 
 	const messages = $derived(resolveMessages(overrides));
 
@@ -14,18 +20,28 @@
 	let password = $state('');
 	let errorMessage = $state<string | null>(null);
 	let isSubmitting = $state(false);
+	/** 送信のたびに替わる。取りやめた送信の結果を表示に反映しない */
+	let attempt: object | null = null;
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault();
 		if (isSubmitting) {
 			return;
 		}
+		const current = {};
+		attempt = current;
 		isSubmitting = true;
 		errorMessage = null;
 
 		const result = await store.signIn(email, password);
+		if (attempt !== current) {
+			return;
+		}
 		isSubmitting = false;
-
+		// ストアで取りやめられた試行は、失敗として示さない
+		if (!result.ok && result.error.kind === 'cancelled') {
+			return;
+		}
 		if (result.ok) {
 			// 遷移しない。新しいアカウントが選ばれて段階が変わるため、到達の制御が動かす
 			onCompleted?.();
@@ -33,6 +49,17 @@
 		}
 		// 語彙ごとの分岐も文言もこの画面は持たない
 		errorMessage = accountErrorMessageOf(result.error, messages, 'sign-in');
+	};
+
+	/**
+	 * 取りやめる。送信中の試行を無効にし、後から成功が返っても反映しない。
+	 * ダイアログに置く組み込み側は、閉じるときにこれを呼ぶ
+	 */
+	export const cancel = (): void => {
+		attempt = null;
+		isSubmitting = false;
+		// Firebase の要求は中断できない。ストアに試行を無効にさせ、後から成功しても反映させない
+		store.cancelPendingSignIn();
 	};
 </script>
 
@@ -81,11 +108,20 @@
 	</form>
 
 	<div class="sign-in__links">
-		<Button fullWidth onclick={() => goto(store.routes.passwordReset)} disabled={isSubmitting}>
+		<Button
+			fullWidth
+			onclick={() =>
+				onGoToPasswordReset ? onGoToPasswordReset() : goto(store.routes.passwordReset)}
+			disabled={isSubmitting}
+		>
 			{messages.goToPasswordReset}
 		</Button>
 		{#if store.canSelfRegister}
-			<Button fullWidth onclick={() => goto(store.routes.signUp)} disabled={isSubmitting}>
+			<Button
+				fullWidth
+				onclick={() => (onGoToSignUp ? onGoToSignUp() : goto(store.routes.signUp))}
+				disabled={isSubmitting}
+			>
 				{messages.goToSignUp}
 			</Button>
 		{/if}

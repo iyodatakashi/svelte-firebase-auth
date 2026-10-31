@@ -3,12 +3,15 @@ import { render } from 'vitest-browser-svelte';
 import { goto } from '$app/navigation';
 import SignIn from '$lib/components/SignIn.svelte';
 import { jaMessages } from '$lib/messages/ja';
+import type { AccountResult, AccountSummary } from '$lib/models/auth/auth.types';
 import {
 	authFailureOf,
+	fakeAccount,
 	fakeRoutes,
 	fakeStore,
 	operationFailureOf
 } from '../support/fakeStore.svelte';
+import SignInInDialog from './fixtures/SignInInDialog.svelte';
 
 const setup = async (options: Parameters<typeof fakeStore>[0] = {}) => {
 	const { store } = fakeStore(options);
@@ -136,5 +139,86 @@ describe('SignIn の結果の型 — 要件 2.6, 7.5（multi-account-auth）', (
 
 		await expect.element(screen.getByText(jaMessages.operationBusy)).toBeInTheDocument();
 		expect(onCompleted).not.toHaveBeenCalled();
+	});
+});
+
+describe('共有する余白の変数', () => {
+	it('変数は定義されており、画面はその値で並ぶ', async () => {
+		const { screen } = await setup();
+		const root = screen.container.querySelector('.sign-in') as HTMLElement;
+		const style = getComputedStyle(root);
+
+		expect(style.getPropertyValue('--auth-block-gap').trim()).toBe('16px');
+		expect(style.getPropertyValue('--auth-inner-gap').trim()).toBe('16px');
+		expect(style.rowGap).toBe('16px');
+	});
+
+	it('組み込み側が包む要素で上書きすれば、その値で並ぶ', async () => {
+		const { screen } = await setup();
+		const root = screen.container.querySelector('.sign-in') as HTMLElement;
+		screen.container.style.setProperty('--auth-block-gap', '40px');
+
+		expect(getComputedStyle(root).rowGap).toBe('40px');
+	});
+});
+
+describe('SignIn の導線を組み込み側が差し替える（multi-account-auth の組み込み）', () => {
+	it('再設定へ進む動きを渡されたら、ページを移らずにそれを呼ぶ', async () => {
+		const { store } = fakeStore();
+		const onGoToPasswordReset = vi.fn();
+		const screen = await render(SignIn, { props: { store, onGoToPasswordReset } });
+		await screen.getByRole('button', { name: jaMessages.goToPasswordReset }).click();
+
+		expect(onGoToPasswordReset).toHaveBeenCalledOnce();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+
+	it('登録へ進む動きを渡されたら、ページを移らずにそれを呼ぶ', async () => {
+		const { store } = fakeStore({ canSelfRegister: true });
+		const onGoToSignUp = vi.fn();
+		const screen = await render(SignIn, { props: { store, onGoToSignUp } });
+		await screen.getByRole('button', { name: jaMessages.goToSignUp }).click();
+
+		expect(onGoToSignUp).toHaveBeenCalledOnce();
+		expect(vi.mocked(goto)).not.toHaveBeenCalled();
+	});
+});
+
+describe('SignIn の取りやめ — 要件 2.5（multi-account-auth）', () => {
+	it('組み込み側から取りやめると、送信中を解き、後から返った結果を反映しない', async () => {
+		const { store } = fakeStore();
+		const onCompleted = vi.fn();
+		let complete: (result: AccountResult<AccountSummary>) => void = () => {};
+		vi.mocked(store.signIn).mockImplementationOnce(
+			() => new Promise((resolve) => (complete = resolve))
+		);
+		const screen = await render(SignInInDialog, { props: { store, onCompleted } });
+		await screen.getByLabelText(jaMessages.email).fill('user@example.com');
+		await screen.getByLabelText(jaMessages.password).fill('secret');
+		await screen.getByRole('button', { name: jaMessages.signInSubmit }).click();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.signInSubmit }))
+			.toBeDisabled();
+
+		await screen.getByRole('button', { name: '閉じる' }).click();
+
+		expect(store.cancelPendingSignIn).toHaveBeenCalledOnce();
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.signInSubmit }))
+			.toBeEnabled();
+		complete({ ok: true, value: fakeAccount() });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(onCompleted).not.toHaveBeenCalled();
+	});
+
+	it('ストアで取りやめられた結果は、失敗として示さない', async () => {
+		const { screen, store } = await setup();
+		vi.mocked(store.signIn).mockResolvedValueOnce(operationFailureOf({ kind: 'cancelled' }));
+		await signIn(screen);
+
+		await expect
+			.element(screen.getByRole('button', { name: jaMessages.signInSubmit }))
+			.toBeEnabled();
+		await expect.element(screen.getByRole('alert')).not.toBeInTheDocument();
 	});
 });

@@ -463,38 +463,43 @@ export interface AuthBaseProps {
 }
 
 /**
+ * サインインの画面の props。導線の動きを渡されたら、ページを移らずにそれを呼ぶ。
+ * 渡されなければ設定された経路へ移る。ダイアログに置く組み込み側は、別のダイアログを開ける
+ */
+export interface SignInProps extends AuthBaseProps {
+	readonly onGoToSignUp?: () => void;
+	readonly onGoToPasswordReset?: () => void;
+}
+
+/**
+ * 登録の画面の props。既定では送信のボタンとページを移る導線を中に描く。
+ * ダイアログに置く組み込み側は、送信と取りやめをフッターに置き、行き来も自分で決められる
+ */
+export interface SignUpProps extends AuthBaseProps {
+	/** 送信のボタンと、導線（サインインへ戻る・再設定へ）を中に描くか。既定は描く */
+	readonly actions?: boolean;
+	/** 導線の動き。渡されたらページを移らずにそれを呼ぶ */
+	readonly onGoToSignIn?: () => void;
+	readonly onGoToPasswordReset?: () => void;
+	/** フォームの id。組み込み側が外に置いた送信ボタンから送信するのに使う */
+	readonly id?: string;
+	/** 送信中か。`bind:isSubmitting` で読む */
+	isSubmitting?: boolean;
+}
+
+/**
  * パスワードの再設定の画面の props。既定では送信のボタンとサインインへ戻る導線を中に描く。
  * ダイアログに置く組み込み側は、送信をフッターに置き、行き来も自分で決められる
  */
 export interface PasswordResetProps extends AuthBaseProps {
 	/** 送信のボタンとサインインへ戻る導線を中に描くか。既定は描く */
 	readonly actions?: boolean;
+	/** サインインへ戻る導線の動き。渡されたらページを移らずにそれを呼ぶ */
+	readonly onGoToSignIn?: () => void;
 	/** フォームの id。組み込み側が外に置いた送信ボタンから送信するのに使う */
 	readonly id?: string;
 	/** 送信中か。`bind:isSubmitting` で読む */
 	isSubmitting?: boolean;
 	/** 試行が続いて受け付けられなくなったか。`bind:isBlocked` で読む */
 	isBlocked?: boolean;
-}
-
-/**
- * 別のアカウントでのサインインの中身。ダイアログの外枠・見出し・開閉は持たない。
- * 登録・パスワードの再設定は受け持たない。組み込み側が `SignUp`・`PasswordReset` などで出す
- */
-export interface AddAccountProps {
-	readonly store: AuthStore;
-	readonly messages?: AuthMessagesOverride;
-	/** サインイン・登録に成功したときに呼ばれる。閉じるかどうかは組み込み側が決める */
-	readonly onCompleted?: (account: AccountSummary) => void;
-	/** 利用者が中の取りやめのボタンを押したときに呼ばれる。送信中の試行は無効にしてある */
-	readonly onCancel?: () => void;
-	/**
-	 * 取りやめと送信のボタンを中に描くか。既定は描く。
-	 * 描かないときは、組み込み側が `form={id}` の送信ボタンと、部品の `cancel()` で操作する
-	 */
-	readonly actions?: boolean;
-	/** フォームの id。組み込み側が外に置いた送信ボタンから送信するのに使う */
-	readonly id?: string;
-	/** 送信中か。`bind:isSubmitting` で読む */
-	isSubmitting?: boolean;
 }
