@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.0.3] - 2026-10-31
+
+### Added
+
+- `SignIn`, `SignUp`, and `PasswordReset` accept `onGoTo…` callbacks that replace their links, so they can be used in dialogs.
+- `cancel()` on `SignIn` and `SignUp`; `actions`, `id`, and `bind:isSubmitting` on `SignUp`.
+
+### Changed
+
+- **Breaking:** `AddAccount` is removed. Use `SignIn` instead.
+- `--auth-block-gap` and `--auth-inner-gap` are defined by the package (both `16px`).
+
+### Fixed
+
+- After verifying the email address elsewhere, a new tab no longer passes an unverified ID token to data access.
+
 ## [0.0.2] - 2026-10-28
 
 ### Added
