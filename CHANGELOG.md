@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.0.4] - 2026-11-02
+
+### Fixed
+
+- Signing in and signing up no longer get stuck on pages that are not served over https.
+- The email field of `SignIn` and `SignUp` is marked `autocomplete="username"`, as Apple recommends for Password AutoFill.
+
 ## [0.0.3] - 2026-10-31
 
 ### Added
