@@ -69,7 +69,7 @@
 			<Input
 				id="sign-in-email"
 				type="email"
-				autocomplete="email"
+				autocomplete="username"
 				placeholder={messages.email}
 				ariaLabel={messages.email}
 				fullWidth

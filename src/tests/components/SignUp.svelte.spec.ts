@@ -246,3 +246,16 @@ describe('SignUp の導線を組み込み側が差し替える（multi-account-a
 		expect(vi.mocked(goto)).not.toHaveBeenCalled();
 	});
 });
+
+describe('自動入力の印（Apple の Password AutoFill の推奨）', () => {
+	it('メールアドレス欄をログイン ID として、パスワード欄を新しいパスワードとして示す', async () => {
+		const { screen } = await setup();
+
+		await expect
+			.element(screen.getByLabelText(jaMessages.email))
+			.toHaveAttribute('autocomplete', 'username');
+		await expect
+			.element(screen.getByLabelText(jaMessages.password))
+			.toHaveAttribute('autocomplete', 'new-password');
+	});
+});
