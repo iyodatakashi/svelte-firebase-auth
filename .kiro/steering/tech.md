@@ -7,25 +7,25 @@ npm パッケージとして配布する Svelte のライブラリ。実行環�
 ```
 [組み込み側アプリ]
     ├── firebase の初期化 → getAuth() ─┐
-    ├── 遷移・到達ガード              │
+    ├── 認証の経路の用意と設定         │
     └── Firestore / アクセス制御       │
                                        ↓
               [@14ch/svelte-firebase-auth]
-                    ├── stores  → createAuthStore(auth, config)
-                    ├── screens → サインイン / 登録 / 確認待ち / パスワード変更 / 再設定
-                    └── models  → 型・エラーの写像・normalizeEmail
+                    ├── stores     → createAuthStore(auth, config)
+                    ├── components → AuthGate（到達の制御）・5画面
+                    └── models     → 型・到達の判定・エラーの写像・normalizeEmail
                                        ↓
                         [Firebase Authentication]
 ```
 
-**依存の向きは一方向で、逆向きを作らない。** `models → stores → screens`。ライブラリから組み込み側へは、コールバックと戻り値でしか働きかけない。
+**依存の向きは一方向で、逆向きを作らない。** `models → stores → components`。`models` はいずれの層も参照しない。
 
 ## Core Technologies
 
 - **Language**: TypeScript（strict mode）
 - **UI**: Svelte 5.x（runes API）
 - **Build / Packaging**: `@sveltejs/package`（`svelte-package`）+ Vite
-- **SvelteKit**: **開発とパッケージングのためだけに使う。** 配布物は SvelteKit に依存しない（→「SvelteKit に依存しない」）
+- **SvelteKit**: **前提とする。** 遷移と到達の制御をライブラリが持つ（→「SvelteKit を前提とする」）
 - **Runtime**: Node.js 24（開発時）
 - **Package Manager**: npm
 
@@ -35,13 +35,20 @@ npm パッケージとして配布する Svelte のライブラリ。実行環�
 
 - **`firebase`** — Authentication のみ。**Firestore に触らない**
 - **`svelte`** — runes
+- **`@sveltejs/kit`** — `$app/navigation` の `goto` と `$app/state` の `page`（→「SvelteKit を前提とする」）
 - **`@14ch/svelte-ui`** — 画面の部品（→「UI は `@14ch/svelte-ui` で組む」）
 
-## SvelteKit に依存しない
+## SvelteKit を前提とする
 
-**`$app/*` を import しない。** `goto` も `page` も使わない。特定のフレームワークのルーティングに依存すると、SvelteKit 以外のアプリで使えなくなる。
+**`$app/*` を import してよい。** 遷移は `$app/navigation` の `goto`、現在の経路は `$app/state` の `page` で読む。
 
-- 遷移が必要な場面は、**コールバックで組み込み側へ返す**（`onSignedIn` / `onRequestPasswordReset` など）
+**この規則は、もとは逆だった**（「`$app/*` を import しない。特定のフレームワークのルーティングに依存すると、SvelteKit 以外のアプリで使えなくなる」）。**置き換えたのは、その理由の前提が失われたためである。** 依頼者の判断により組み込み先は SvelteKit に限られると決まり、「SvelteKit 以外のアプリ」という利用者は実在しなくなった。実在しない利用者のための抽象を維持する対価として、組み込み先ごとに 13 本のコールバックの配線と、段階から遷移への対応づけを書き直すことになっていた。
+
+- **入口は1つに保つ。** SvelteKit 向けの第2の入口（`/sveltekit` など）を作らない。公開面・手引き・「中核か層か」の判断が二重になり、恒久的な負担になる
+- **`$app/*` とブラウザの保存領域に触るのは `components/` だけ。** 到達の判定は純関数として `models/` に置く。戻り先を受け入れるかどうかの判定もそこにあり、保持そのものは `AuthGate` が行う。ルーターの無い環境では `goto` が例外を投げ、`page.url` が空になるため、判定と効果を分けないと**分岐のどれも単体で試験できない**
+- **経路は組み込み側の設定として受け取る。** URL に現れるとおりの `pathname` を受け取り、ライブラリが経路を決めつけない
+- **到達の制御は防御ではない。** ブラウザでのみ働き、組み込み側が包み忘れれば働かない。**防御は組み込み側のアクセス制御が担う**
+- SvelteKit 以外の組み込み先が現れた時点で、中核を抜き出すことを検討する
 - `src/routes/` はショーケース兼プレビュー用のアプリであり、**配布物に含めない**。`src/lib/` だけが配布される
 
 ## UI は `@14ch/svelte-ui` で組む

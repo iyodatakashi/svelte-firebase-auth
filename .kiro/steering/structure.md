@@ -4,7 +4,7 @@
 
 **`src/lib/` が配布物、`src/routes/` はショーケース。** この2つを混ぜない。`routes` に書いたものは組み込み側に届かず、`lib` に書いたショーケース専用のコードは配布物を汚す。
 
-`lib` の中は、画面（screens）・状態と操作（stores）・ドメインの型と純関数（models）で責務を分ける。`markn` / `logotope` の構成方針に準拠する。同一の開発者が行き来するため、置き場所と書き方を推測できる状態を優先する。
+`lib` の中は、画面（components）・状態と操作（stores）・ドメインの型と純関数（models）で責務を分ける。`markn` / `logotope` の構成方針に準拠する。同一の開発者が行き来するため、置き場所と書き方を推測できる状態を優先する。
 
 `src/lib/server/` は使わない（ブラウザで動くライブラリのため）。
 
@@ -17,19 +17,30 @@
 ```typescript
 export { createAuthStore } from './stores/auth.svelte';
 export { normalizeEmail } from './models/auth/auth';
-export { default as SignInScreen } from './screens/SignInScreen.svelte';
-export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/auth/auth.types';
+export { default as AuthGate } from './components/AuthGate.svelte';
+export { default as SignIn } from './components/SignIn.svelte';
+export type {
+	AuthStore,
+	AuthConfig,
+	AuthRoutes,
+	AuthError,
+	AuthErrorKind
+} from './models/auth/auth.types';
 ```
 
-- **深い import を組み込み側に強いない。** `@14ch/svelte-firebase-auth/dist/screens/...` を書かせる形にしない
+- **深い import を組み込み側に強いない。** `@14ch/svelte-firebase-auth/dist/components/...` を書かせる形にしない
 - **公開面を変えたら、組み込み側の再検証の契機になる。** 型・エラーの語彙・画面の props の変更は破壊的変更として扱う
 
-### screens（`src/lib/screens/`）
+### components（`src/lib/components/`）
 
-**Purpose**: 画面の実体。マークアップと画面固有のロジック
-**Example**: `src/lib/screens/SignInScreen.svelte`
+**Purpose**: 画面の実体と、画面を包む制御。マークアップとコンポーネント固有のロジック。**`$app/*` に触ってよいのはここだけ**
+**Example**: `src/lib/components/SignIn.svelte`、`src/lib/components/AuthGate.svelte`
 
-- **遷移を持たない。** 完了・失敗は props のコールバックで組み込み側へ返す
+- **判定を持たない。** 到達の判定は `models/` の純関数が持ち、`AuthGate` はその結果に従うだけ。ルーターの無い環境では `goto` が例外を投げるため、分けないと単体で試験できない
+- **`AuthGate` は遷移と描画の抑止を対で持つ。** 遷移だけを止めても、判定が済むまで保護された経路の中身が画面に出る
+- **段階を変えない導線の遷移を自ら行う。** 行き先は `store.routes` から読む。組み込み側に導線の配線を必須にしない
+- **導線の動きは、組み込み側が省略可能なコールバック（`onGoToSignIn` など）で差し替えられる。** 渡されたらページを移らずにそれを呼び、渡されなければ経路へ移る。画面をダイアログに置く組み込み先が、ページを移る代わりに別のダイアログを開くため（2026-10-31、依頼者の判断）。もとは「コールバックの props を持たない」だった。その理由は組み込み先ごとに配線を書かせる負担であり、省略できる形ならその負担は生じない
+- **完了時には遷移しない。** サインイン・登録・確認・サインアウトの完了は段階を変えるため、`AuthGate` が動かす。画面にも同じ判断を書くと、判定が2箇所に増える
 - **状態は store から受け取る。** 画面が `Auth` を直接呼ばない
 
 ### stores（`src/lib/stores/`）
@@ -38,6 +49,7 @@ export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/a
 **Example**: `src/lib/stores/auth.svelte.ts`（`createAuthStore` ファクトリ）
 
 - **シングルトンにしない。** 組み込み側が `Auth` と設定を渡して生成する。ライブラリがグローバルな状態を持つと、テストと複数インスタンスで破綻する
+- **`$app/*` を参照しない。**
 
 ### models（`src/lib/models/<domain>/`）
 
@@ -60,15 +72,16 @@ export type { AuthStore, AuthConfig, AuthError, AuthErrorKind } from './models/a
 
 **Purpose**: 開発中に画面を見るためのショーケースと、E2E の対象。**配布物ではない**
 
-- ここに書いた設定値・Firebase の初期化・遷移は、**組み込み側の書き方の実例**として機能する。README と食い違わせない
+- ここに書いた設定値・Firebase の初期化・経路の置き方は、**組み込み側の書き方の実例**として機能する。README と食い違わせない
+- **認証の画面は、それぞれ独立した経路として置く。** 自前の画面切り替えを持たない。持つと、ライブラリの遷移と到達の制御を通らない経路でしか確かめられない
 
 ## Naming Conventions
 
-- **Svelte コンポーネント**: PascalCase（`SignInScreen.svelte`）
+- **Svelte コンポーネント**: PascalCase（`SignIn.svelte`）
 - **TypeScript ファイル**: kebab-case。ただし store と models 配下は camelCase + 用途サフィックス（`auth.svelte.ts` / `auth.types.ts`）
 - **型**: PascalCase（`AuthStore`, `AuthErrorKind`）
-- **画面のコンポーネント名は `*Screen` で揃える。** 組み込み側では自前の画面と並ぶため、由来が名前から分かる状態にする
-- **props の型は `<画面名>Props`**（`SignInScreenProps`）
+- **コンポーネント名に `Screen` のような種別のサフィックスを付けない。** 画面として出すものは名前で言い直しても情報が増えない。出自は import 文が示す（組み込み側は自分の画面を `*Page` などで名付けている）
+- **画面の props の型は `AuthBaseProps` を共通にする。** 画面ごとの差分が無い画面は `AuthBaseProps` をそのまま使い、`<コンポーネント名>Props` を作らない。差分が出た画面だけ、`AuthBaseProps` を拡げた `<コンポーネント名>Props` を持つ（`PasswordResetProps`）。画面以外のコンポーネントの props は `<コンポーネント名>Props`（`AuthGateProps`）
 
 ## 型定義の規約（重要）
 
@@ -97,15 +110,20 @@ import AuthField from './AuthField.svelte';
 **Path Aliases**: `$lib/` → `src/lib/`（SvelteKit 標準）
 
 - **`src/lib` から `src/routes` を import しない。** 逆向きの依存であり、配布物がショーケースに依存する
-- **`$app/*` を import しない**（→ `tech.md`「SvelteKit に依存しない」）
+- **`$app/*` を import してよいのは `components/` だけ。** `models/` と `stores/` は参照しない（→ `tech.md`「SvelteKit を前提とする」）
+- **ブラウザの保存領域（`sessionStorage` など）に触るのも `components/` だけ。** 効果を持つものを、判定と状態の層へ入れない
 
 ## CSS / スタイル記法
 
 - **BEM 記法で書く**（Block・Element `__`・Modifier `--`）
-- **Block 名はコンポーネントの PascalCase 名を kebab-case に変換する**（`SignInScreen.svelte` → `.sign-in-screen`）
+- **Block 名はコンポーネントの PascalCase 名を kebab-case に変換する**（`SignIn.svelte` → `.sign-in`）
 - **見た目のための修飾タグ（`<strong>` / `<b>` / `<em>` / `<small>` など）を使わない。** 強調・装飾はクラスと CSS で表現する
 - **スタイルはそのコンポーネントの `<style>` に書く。** 見た目はそのファイル内で完結させる
 - **意匠の値は `@14ch/svelte-ui` のトークン（`--svelte-ui-*`）を参照する。** 色・フォントサイズ・意匠としての余白や寸法を `#333` `14px` のような生値で書かない。**ライブラリ独自のパレットを持たない** — 組み込み側のテーマに従うため。必要なトークンが無ければ `@14ch/svelte-ui` 側に足す（→ `tech.md`）
+- **画面が共有する余白は `src/lib/assets/styles/variables.css` の `:root` で定義し、各画面はフォールバックを書かずに参照する**（`var(--auth-block-gap)`）。フォールバックを各所に書くと、変数が定義されていないことに気づけないまま値が散らばり、食い違っていく。値を変えるときは variables.css だけを直す。組み込み側は `:root` か画面を包む要素で上書きする
+- **`font-size` は、下げる理由を言えるときだけ書く。** 既定は何も指定しないことである。ブラウザの標準は 16px で、`--svelte-ui-font-size` の 1rem もそれに合わせてある。**小さくするのが丁寧なのではない。** 読ませたいものを読みにくくしているだけなら、それは設計ではなく癖である
+- **画面に出す文に `--svelte-ui-font-size-sm` を当てない。** 説明・通知・エラー・案内は、利用者が詰まる場面で読ませたい**本文**である。**本文の標準は `--svelte-ui-font-size` の 1rem（16px）で、何も指定しなければそれが効く。** `--svelte-ui-font-size-sm` は 0.875rem（14px）であり、**標準ではなく一段小さい値**である。14px を標準と取り違えて当てない。**色も `--svelte-ui-text-subtle-color` で薄くしない**（→ コミット `498b10e`）
+- **操作の並びは「取りやめが左、実行が右」。** 描画の順もそのとおりに書く。見た目だけを CSS で入れ替えると、読み上げと Tab の順が見た目と食い違う
 - **画面の外形（幅・配置）を決めつけない。** 組み込み側のレイアウトに置かれるため、`position: fixed` や画面全体を占める前提を持たない
 
 ## Code Organization Principles
