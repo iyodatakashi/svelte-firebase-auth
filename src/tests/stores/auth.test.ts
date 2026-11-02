@@ -1019,3 +1019,20 @@ describe('タブの選択と復元 — 要件 4.2, 4.3, 4.7, 4.8, 4.11, 4.12', (
 		expect(store.activeId).toBe(a.id);
 	});
 });
+
+describe('https でないページ — 要件 2.2（multi-account-auth）', () => {
+	it('crypto.randomUUID が使えない環境でも、サインインできる', async () => {
+		// https と localhost 以外では crypto.randomUUID が無い
+		const getRandomValues = crypto.getRandomValues.bind(crypto);
+		vi.stubGlobal('crypto', { getRandomValues });
+		try {
+			const { store } = await open();
+			const result = await store.signIn('a@example.com', PASSWORD);
+
+			expect(result.ok).toBe(true);
+			expect(store.accounts).toHaveLength(1);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+});

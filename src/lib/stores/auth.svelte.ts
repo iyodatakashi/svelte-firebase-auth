@@ -656,10 +656,16 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 	// 補助
 	// ---------------------------------------------------------------------------
 
-	/** 生成した時刻を先頭に持たせ、ID の順が作った順になるようにする。別のタブと衝突しないよう乱数を添える */
+	/**
+	 * 生成した時刻を先頭に持たせ、ID の順が作った順になるようにする。別のタブと衝突しないよう乱数を添える。
+	 * 乱数は getRandomValues で作る。randomUUID は https と localhost でしか使えない
+	 */
 	const newSlotId = (): string => {
 		lastIssuedAt = Math.max(Date.now(), lastIssuedAt + 1);
-		return `${lastIssuedAt.toString(36).padStart(9, '0')}-${crypto.randomUUID().slice(0, 8)}`;
+		const random = Array.from(crypto.getRandomValues(new Uint8Array(4)), (byte) =>
+			byte.toString(16).padStart(2, '0')
+		).join('');
+		return `${lastIssuedAt.toString(36).padStart(9, '0')}-${random}`;
 	};
 
 	const summaryOf = (id: string): AccountSummary | null => {
