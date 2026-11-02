@@ -19,7 +19,8 @@
 		"test:unit": "vitest --project=client --project=server",
 		"test:emulator": "firebase emulators:exec --only auth,firestore --project demo-svelte-firebase-auth \"vitest run --project=emulator\"",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
-		"test:e2e": "playwright install && firebase emulators:exec --only auth,firestore --project demo-svelte-firebase-auth \"playwright test && VITE_MULTI_ACCOUNT=false playwright test\""
+		"test:e2e": "playwright install && firebase emulators:exec --only auth,firestore --project demo-svelte-firebase-auth \"playwright test && VITE_MULTI_ACCOUNT=false playwright test\"",
+		"release": "bash scripts/release.sh"
 	},
 	"files": [
 		"dist",
