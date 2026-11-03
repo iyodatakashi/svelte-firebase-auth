@@ -127,10 +127,15 @@
 </header>
 
 <main class="showcase">
-	<!-- 到達の制御はここに1つ置くだけでよい。判定が済むまで子を描画しない -->
-	<AuthGate {store} {pending}>
+	{#if page.url.searchParams.has('preview')}
+		<!-- 画面の見た目の確認用。?preview を付けると到達の制御を通さず、その URL の画面を描く -->
 		{@render children()}
-	</AuthGate>
+	{:else}
+		<!-- 到達の制御はここに1つ置くだけでよい。判定が済むまで子を描画しない -->
+		<AuthGate {store} {pending}>
+			{@render children()}
+		</AuthGate>
+	{/if}
 </main>
 
 <!-- 選択と追加のダイアログは、ガードの外に置く。保護された内容が隠れていても操作できる -->
