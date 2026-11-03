@@ -109,7 +109,8 @@
 
 <style>
 	/*
-		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		余白はブロック間の --auth-block-gap、ブロック内の --auth-inner-gap、
+		リンクの間の --auth-links-gap。
 		値は $lib/assets/styles/variables.css が決める
 	*/
 	.password-reset {
@@ -119,22 +120,22 @@
 		color: var(--svelte-ui-text-color);
 	}
 
-	/* 読ませる文のまとまり */
+	/* 読ませる文のまとまり。段落の間は入力欄などの余白とは別物で、文字の大きさに合わせる */
 	.password-reset__lead {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap);
+		gap: 1em;
 	}
 
 	.password-reset__lead p {
 		margin: 0;
 	}
 
-	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック間と同じ間隔で積む */
+	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック内の間隔で積む */
 	.password-reset__form {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-block-gap);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-reset__fields {
@@ -143,11 +144,11 @@
 		gap: var(--auth-inner-gap);
 	}
 
-	/* 送信できたことの提示。通知と、迷惑メールの案内を1つのまとまりにする */
+	/* 送信できたことの提示。通知と、迷惑メールの案内を1つのまとまりにする。段落の間は文字の大きさに合わせる */
 	.password-reset__sent {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap);
+		gap: 1em;
 	}
 
 	.password-reset__sent p {
@@ -157,13 +158,12 @@
 	.password-reset__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--auth-inner-gap);
 	}
 
 	.password-reset__links {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap);
+		gap: var(--auth-links-gap);
 	}
 
 	.password-reset__notice {

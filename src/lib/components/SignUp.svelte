@@ -145,7 +145,8 @@
 
 <style>
 	/*
-		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		余白はブロック間の --auth-block-gap、ブロック内の --auth-inner-gap、
+		リンクの間の --auth-links-gap。
 		値は $lib/assets/styles/variables.css が決める
 	*/
 	.sign-up {
@@ -155,11 +156,11 @@
 		color: var(--svelte-ui-text-color);
 	}
 
-	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック間と同じ間隔で積む */
+	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック内の間隔で積む */
 	.sign-up__form {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-block-gap);
+		gap: var(--auth-inner-gap);
 	}
 
 	.sign-up__fields {
@@ -171,13 +172,12 @@
 	.sign-up__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--auth-inner-gap);
 	}
 
 	.sign-up__links {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap);
+		gap: var(--auth-links-gap);
 	}
 
 	.sign-up__error {

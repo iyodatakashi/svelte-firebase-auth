@@ -127,7 +127,7 @@
 
 <style>
 	/*
-		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		余白はブロック間の --auth-block-gap、ブロック内の --auth-inner-gap、横に並べたボタンの間の --auth-actions-gap。
 		値は $lib/assets/styles/variables.css が決める
 	*/
 	.password-change {
@@ -137,11 +137,11 @@
 		color: var(--svelte-ui-text-color);
 	}
 
-	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック間と同じ間隔で積む */
+	/* 入力要素のまとまり。入力欄・提示・操作を、ブロック内の間隔で積む */
 	.password-change__form {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-block-gap);
+		gap: var(--auth-inner-gap);
 	}
 
 	.password-change__fields {
@@ -150,10 +150,11 @@
 		gap: var(--auth-inner-gap);
 	}
 
+	/* 横に並べたボタンの組。間は縦に積む余白とは別に決める */
 	.password-change__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--auth-inner-gap);
+		gap: var(--auth-actions-gap);
 	}
 
 	.password-change__notice {

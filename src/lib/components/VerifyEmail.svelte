@@ -133,6 +133,9 @@
 		>
 			{messages.verifyEmailResend}
 		</Button>
+	</div>
+
+	<div class="verify-email__links">
 		<Button fullWidth onclick={signOut} disabled={isLeaving}>
 			{messages.signOut}
 		</Button>
@@ -141,7 +144,7 @@
 
 <style>
 	/*
-		余白は2つだけ持つ。ブロック間の --auth-block-gap と、ブロック内の --auth-inner-gap。
+		余白はブロック間の --auth-block-gap と、リンクの間の --auth-links-gap。
 		値は $lib/assets/styles/variables.css が決める
 	*/
 	.verify-email {
@@ -151,11 +154,11 @@
 		color: var(--svelte-ui-text-color);
 	}
 
-	/* 読ませる文のまとまり */
+	/* 読ませる文のまとまり。段落の間は入力欄などの余白とは別物で、文字の大きさに合わせる */
 	.verify-email__lead {
 		display: flex;
 		flex-direction: column;
-		gap: var(--auth-inner-gap);
+		gap: 1em;
 	}
 
 	.verify-email__lead p {
@@ -165,7 +168,12 @@
 	.verify-email__actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--auth-inner-gap);
+	}
+
+	.verify-email__links {
+		display: flex;
+		flex-direction: column;
+		gap: var(--auth-links-gap);
 	}
 
 	.verify-email__notice {

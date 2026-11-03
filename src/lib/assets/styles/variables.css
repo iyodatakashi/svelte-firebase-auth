@@ -4,7 +4,11 @@
 */
 :root {
 	/* ブロック間 */
-	--auth-block-gap: 16px;
-	/* ブロック内 */
+	--auth-block-gap: 32px;
+	/* ブロック内（リンク以外） */
 	--auth-inner-gap: 16px;
+	/* 横に並べたボタンの間 */
+	--auth-actions-gap: 16px;
+	/* 画面下のリンクの間 */
+	--auth-links-gap: 8px;
 }
