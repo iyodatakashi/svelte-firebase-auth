@@ -1,6 +1,6 @@
 {
 	"name": "@14ch/svelte-firebase-auth",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"description": "Email-and-password authentication for SvelteKit on Firebase: auth store, five screens and route guarding",
 	"license": "MIT",
 	"publishConfig": {

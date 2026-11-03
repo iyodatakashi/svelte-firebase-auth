@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.0.5] - 2026-11-03
+
+### Changed
+
+- Spacing is split by meaning. `--auth-inner-gap` now spaces only the fields, messages, and submit button; links use `--auth-links-gap` (`8px`) and side-by-side buttons use `--auth-actions-gap`. `--auth-block-gap` (now `32px`) separates the form from the links.
+- Gaps between paragraphs of text are `1em`.
+- In `VerifyEmail`, sign-out is placed in its own links block below the resend button.
+
 ## [0.0.4] - 2026-11-02
 
 ### Fixed
