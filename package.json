@@ -8,6 +8,7 @@
 	},
 	"scripts": {
 		"dev": "vite dev",
+		"emulators": "mkdir -p .emulator-data && firebase emulators:start --only auth,firestore --project demo-svelte-firebase-auth --import=.emulator-data --export-on-exit",
 		"build": "vite build && npm run prepack",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",

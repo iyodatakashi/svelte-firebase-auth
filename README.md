@@ -519,6 +519,7 @@ Changes for host apps that used an earlier version:
 
 ```bash
 npm run dev            # Showcase in src/routes (connects to the Auth and Firestore emulators)
+npm run emulators      # Auth and Firestore emulators for the showcase (data kept in .emulator-data)
 npm run check          # Type check
 npm run lint           # Formatting and static analysis
 npm run test:unit      # Unit and component tests
@@ -527,10 +528,10 @@ npm run test:e2e       # End-to-end tests against the showcase
 npm run prepack        # src/lib -> dist
 ```
 
-The showcase and `test:emulator` / `test:e2e` use the Auth and Firestore emulators (Firestore is used only for development and tests; it is not a dependency of the package). The Firebase CLI is required.
+The showcase and `test:emulator` / `test:e2e` use the Auth and Firestore emulators (Firestore is used only for development and tests; it is not a dependency of the package). The Firebase CLI is required. Start the emulators for the showcase with the command below. It saves the Auth and Firestore data to `.emulator-data` on exit and loads it on the next start.
 
 ```bash
-firebase emulators:start --only auth,firestore --project demo-svelte-firebase-auth
+npm run emulators
 ```
 
 The showcase uses multiple accounts by default, with a user menu, an add-account dialog, a chooser dialog, and Firestore reads and writes for the account in use. Set `VITE_MULTI_ACCOUNT=false` to build it in single account mode, without any account list or chooser. `npm run test:e2e` runs the end-to-end tests in both modes.
