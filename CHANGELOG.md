@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.0.6] - 2026-11-20
+
+### Changed
+
+- The `@sveltejs/kit` peer dependency now accepts `^3.0.0` as well as `^2.63.0`.
+
 ## [0.0.5] - 2026-11-03
 
 ### Changed
