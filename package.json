@@ -42,7 +42,7 @@
 	},
 	"peerDependencies": {
 		"@14ch/svelte-ui": "0.0.x",
-		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/kit": "^2.63.0 || ^3.0.0",
 		"firebase": "^12.18.0",
 		"svelte": "^5.0.0"
 	},
@@ -50,8 +50,8 @@
 		"@14ch/svelte-ui": "0.0.x",
 		"@eslint/js": "^10.0.1",
 		"@playwright/test": "^1.60.0",
-		"@sveltejs/adapter-auto": "^7.0.1",
-		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/adapter-auto": "^9.0.0",
+		"@sveltejs/kit": "^3.4.0",
 		"@sveltejs/package": "^2.5.8",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^24",
