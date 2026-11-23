@@ -2,16 +2,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getIdToken, signInWithEmailAndPassword, type Auth } from 'firebase/auth';
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import type { FirebaseApp } from 'firebase/app';
-import { createAuthStore } from '$lib/stores/auth.svelte';
-import type { AuthConfig, AuthStore } from '$lib/models/auth/auth.types';
+import { createAuthStore } from '#lib/stores/auth.svelte';
+import type { AuthConfig, AuthStore } from '#lib/models/auth/auth.types';
 import {
 	clearEmulatorUsers,
 	createEmulatorAuth,
 	createEmulatorFirestore,
 	createEmulatorUser,
 	fetchOobCodes
-} from '../support/emulator';
-import { memoryBrowser } from '../support/memoryPersistence';
+} from '#tests/support/emulator';
+import { memoryBrowser } from '#tests/support/memoryPersistence';
 
 /**
  * Firebase の実際の振る舞いに依存する箇所を、エミュレータに当てて確かめる。

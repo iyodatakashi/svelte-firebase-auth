@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { FirebaseError } from 'firebase/app';
-import { passwordStatus } from '../../support/password';
-import { normalizeEmail, toAuthError, unmetRequirementsOf } from '$lib/models/auth/auth';
-import { ERROR_KIND_BY_CODE } from '$lib/models/auth/auth.constants';
-import type { AuthErrorKind } from '$lib/models/auth/auth.types';
+import { passwordStatus } from '#tests/support/password';
+import { normalizeEmail, toAuthError, unmetRequirementsOf } from '#lib/models/auth/auth';
+import { ERROR_KIND_BY_CODE } from '#lib/models/auth/auth.constants';
+import type { AuthErrorKind } from '#lib/models/auth/auth.types';
 
 describe('normalizeEmail — 要件 1.7', () => {
 	it('前後の空白を落とし、小文字へ揃える', () => {

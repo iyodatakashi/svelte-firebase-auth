@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import { VerifyEmail, type AuthStore } from '$lib/index';
-
-	const store = getContext<AuthStore>('authStore');
+	import VerifyEmailPage from '#showcase/features/verifyEmail/VerifyEmailPage.svelte';
 </script>
 
-<VerifyEmail {store} />
+<VerifyEmailPage />

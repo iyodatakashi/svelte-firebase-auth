@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FirebaseError } from 'firebase/app';
-import { passwordStatus } from '../support/password';
+import { passwordStatus } from '#tests/support/password';
 import {
 	emitAuthState,
 	fakeAuth,
@@ -9,11 +9,11 @@ import {
 	firebaseAuthMock,
 	listenerCount,
 	resetFirebaseFake
-} from './firebaseFake';
+} from '#tests/support/firebaseFake';
 
 vi.mock('firebase/auth', () => firebaseAuthMock);
 
-const { createSlotStore } = await import('$lib/stores/slot.svelte');
+const { createSlotStore } = await import('#lib/stores/slot.svelte');
 
 const routes = {
 	signIn: '/signin',

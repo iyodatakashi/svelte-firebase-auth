@@ -1,117 +1,76 @@
 # Project Structure
 
+構成の共通ルールは `~/.claude/rules/sveltekit-structure.md`（全 SvelteKit プロジェクト共通）にある。**ここには、このプロジェクトのドメインと、共通ルールから外れる所（例外とその理由）だけを書く。** 共通ルールと同じ内容を写さない。
+
 ## Organization Philosophy
 
-**`src/lib/` が配布物、`src/routes/` はショーケース。** この2つを混ぜない。`routes` に書いたものは組み込み側に届かず、`lib` に書いたショーケース専用のコードは配布物を汚す。
-
-`lib` の中は、画面（components）・状態と操作（stores）・ドメインの型と純関数（models）で責務を分ける。`markn` / `logotope` の構成方針に準拠する。同一の開発者が行き来するため、置き場所と書き方を推測できる状態を優先する。
+**`src/lib/` が配布物、`src/routes/` と `src/showcase/` はショーケース。** この2つを混ぜない。ショーケースに書いたものは組み込み側に届かず、`lib` に書いたショーケース専用のコードは配布物を汚す。
 
 `src/lib/server/` は使わない（ブラウザで動くライブラリのため）。
 
-## Directory Patterns
+## 公開面（`src/lib/index.ts`）
 
-### 公開面（`src/lib/index.ts`）
+**Purpose**: 組み込み側が依存してよい面のすべて。**ここに export されていないものは内部実装**であり、いつ変えてもよい。`package.json` の `exports` は `.` だけで、`dist` の中の並びは公開面ではない
 
-**Purpose**: 組み込み側が依存してよい面のすべて。**ここに export されていないものは内部実装**であり、いつ変えてもよい
-
-```typescript
-export { createAuthStore } from './stores/auth.svelte';
-export { normalizeEmail } from './models/auth/auth';
-export { default as AuthGate } from './components/AuthGate.svelte';
-export { default as SignIn } from './components/SignIn.svelte';
-export type {
-	AuthStore,
-	AuthConfig,
-	AuthRoutes,
-	AuthError,
-	AuthErrorKind
-} from './models/auth/auth.types';
-```
-
-- **深い import を組み込み側に強いない。** `@14ch/svelte-firebase-auth/dist/components/...` を書かせる形にしない
+- **深い import を組み込み側に強いない。** `@14ch/svelte-firebase-auth/dist/features/...` を書かせる形にしない
 - **公開面を変えたら、組み込み側の再検証の契機になる。** 型・エラーの語彙・画面の props の変更は破壊的変更として扱う
+- **公開する型と内部の型を区別する。** 公開するものは `index.ts` から export する
 
-### components（`src/lib/components/`）
+## ドメイン
 
-**Purpose**: 画面の実体と、画面を包む制御。マークアップとコンポーネント固有のロジック。**`$app/*` に触ってよいのはここだけ**
-**Example**: `src/lib/components/SignIn.svelte`、`src/lib/components/AuthGate.svelte`
+### features（`src/lib/features/<画面>/`）
 
-- **判定を持たない。** 到達の判定は `models/` の純関数が持ち、`AuthGate` はその結果に従うだけ。ルーターの無い環境では `goto` が例外を投げるため、分けないと単体で試験できない
+認証の画面（`signIn` / `signUp` / `verifyEmail` / `passwordChange` / `passwordReset`）と、画面を包む制御（`authGate` / `authSession`）。どれも1つずつなので、画面ごとのディレクトリで終える
+
+- **判定を持たない。** 到達の判定は `models/authGuard/` の純関数が持ち、`AuthGate` はその結果に従うだけ。ルーターの無い環境では `goto` が例外を投げるため、分けないと単体で試験できない
 - **`AuthGate` は遷移と描画の抑止を対で持つ。** 遷移だけを止めても、判定が済むまで保護された経路の中身が画面に出る
 - **段階を変えない導線の遷移を自ら行う。** 行き先は `store.routes` から読む。組み込み側に導線の配線を必須にしない
 - **導線の動きは、組み込み側が省略可能なコールバック（`onGoToSignIn` など）で差し替えられる。** 渡されたらページを移らずにそれを呼び、渡されなければ経路へ移る。画面をダイアログに置く組み込み先が、ページを移る代わりに別のダイアログを開くため（2026-10-31、依頼者の判断）。もとは「コールバックの props を持たない」だった。その理由は組み込み先ごとに配線を書かせる負担であり、省略できる形ならその負担は生じない
 - **完了時には遷移しない。** サインイン・登録・確認・サインアウトの完了は段階を変えるため、`AuthGate` が動かす。画面にも同じ判断を書くと、判定が2箇所に増える
 - **状態は store から受け取る。** 画面が `Auth` を直接呼ばない
+- **`$app/*` とブラウザの保存領域（`sessionStorage` など）に触るのは `features/` だけ。** `models/` と `stores/` は参照しない（→ `tech.md`「SvelteKit を前提とする」）
+- **画面は `<svelte:head><title>` を持たない（共通ルールの例外）。** ライブラリの画面は組み込み側のページに置かれ、ダイアログにも置かれる。ページの名乗りは組み込み側が決める（→ 画面の props は題字・名乗りを持たない）
 
 ### stores（`src/lib/stores/`）
 
-**Purpose**: 認証状態の保持と、Firebase Auth への操作。**購読（`onAuthStateChanged`）と寿命を持つもの**
-**Example**: `src/lib/stores/auth.svelte.ts`（`createAuthStore` ファクトリ）
+`auth.svelte.ts`（公開する `createAuthStore`）と `slot.svelte.ts`（スロット1件の Auth。内部）。Firebase Auth の呼び出しはここに集める
 
 - **シングルトンにしない。** 組み込み側が `Auth` と設定を渡して生成する。ライブラリがグローバルな状態を持つと、テストと複数インスタンスで破綻する
-- **`$app/*` を参照しない。**
 
 ### models（`src/lib/models/<domain>/`）
 
-**Purpose**: ドメインの型・定数・純関数。**購読を持たない**
+| ドメイン    | 中身                                                                                                                       |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `auth`      | エラーの語彙・設定・段階・アカウント・`AuthStore` の型、画面の props の型、Firebase のエラーコードの写像、`normalizeEmail` |
+| `authGuard` | 到達の判定（`resolveAuthGuard`）と、戻り先の型                                                                             |
+| `slot`      | スロット記録・ブラウザ保存の窓口・照合の型と純関数                                                                         |
+| `messages`  | 画面に出す既定の文言（`jaMessages` / `enMessages`）と、差し替え・失敗から文言を引く純関数                                  |
 
-| ファイル                | 内容                                                         |
-| ----------------------- | ------------------------------------------------------------ |
-| `<domain>.types.ts`     | 型と型ガードのみ（変換関数は置かない）                       |
-| `<domain>.constants.ts` | ドメインの定数                                               |
-| `<domain>.ts`           | ドメインの純関数（`normalizeEmail`、エラーコードの写像など） |
+- **文言をコンポーネントに直接書かない。** 差し替えの対象になるものは、必ず `models/messages/` を経由する
 
-### messages（`src/lib/messages/`）
-
-**Purpose**: 画面に出す既定の文言。組み込み側が項目単位で差し替えられる形で公開する
-**Example**: `src/lib/messages/ja.ts`
-
-- **文言をコンポーネントに直接書かない。** 差し替えの対象になるものは、必ずここを経由する
-
-### routes（`src/routes/`）
+## ショーケース（`src/routes/` と `src/showcase/`）
 
 **Purpose**: 開発中に画面を見るためのショーケースと、E2E の対象。**配布物ではない**
 
 - ここに書いた設定値・Firebase の初期化・経路の置き方は、**組み込み側の書き方の実例**として機能する。README と食い違わせない
 - **認証の画面は、それぞれ独立した経路として置く。** 自前の画面切り替えを持たない。持つと、ライブラリの遷移と到達の制御を通らない経路でしか確かめられない
+- **画面の実体は `src/showcase/` に、`src/lib` と同じ並び（`features/` / `stores/`）で置く（共通ルールの例外）。** 共通ルールは画面の実体を `src/lib/features/` に置くが、このリポジトリでは `src/lib` が配布物であり、置くとショーケースの画面と Firestore の読み書きが配布物に入る。routes は共通ルールどおり最小ラッパーにし、`#showcase/` で参照する
+- `src/showcase/stores/auth.ts` がショーケースの認証ストアを1つ作る（ショーケースは SSR を使わない）
 
 ## Naming Conventions
 
-- **Svelte コンポーネント**: PascalCase（`SignIn.svelte`）
-- **TypeScript ファイル**: kebab-case。ただし store と models 配下は camelCase + 用途サフィックス（`auth.svelte.ts` / `auth.types.ts`）
-- **型**: PascalCase（`AuthStore`, `AuthErrorKind`）
-- **コンポーネント名に `Screen` のような種別のサフィックスを付けない。** 画面として出すものは名前で言い直しても情報が増えない。出自は import 文が示す（組み込み側は自分の画面を `*Page` などで名付けている）
+- **ライブラリの画面は `XxxPage` と名付けない（共通ルールの例外）。** 共通ルールの `XxxPage` は routes から差し込む画面の名であり、ライブラリの画面は組み込み側のページやダイアログに置かれる部品である。ファイル名は公開する名（`SignIn`）と揃える。`Screen` のような種別のサフィックスも付けない。出自は import 文が示す。ショーケースの画面は共通ルールどおり `SignInPage` と名付ける
 - **画面の props の型は `AuthBaseProps` を共通にする。** 画面ごとの差分が無い画面は `AuthBaseProps` をそのまま使い、`<コンポーネント名>Props` を作らない。差分が出た画面だけ、`AuthBaseProps` を拡げた `<コンポーネント名>Props` を持つ（`PasswordResetProps`）。画面以外のコンポーネントの props は `<コンポーネント名>Props`（`AuthGateProps`）
 
-## 型定義の規約（重要）
+## Import
 
-**型やコードを書く前に、まずこの規約を照合する。**
+- `#lib/` に加え、`#showcase/`（`src/showcase/`）と `#tests/`（`src/tests/`）を `package.json` の `imports` に置く。`svelte-package` が `dist` では相対パスに直す
+- **`src/lib` から `src/showcase` を import しない。** 逆向きの依存であり、配布物がショーケースに依存する
 
-- **置き場所**: `src/lib/models/<domain>/<domain>.types.ts` に書く。`src/lib/types/` のような汎用の場所に新しい型を置かない
-- **`.types.ts` に集約する**: 各所にローカル型をインライン定義しない。共用できる型は共用し、重複定義しない
-- **`.types.ts` は型と型ガードのみ**: 変換関数を `.types.ts` に置かない。変換は利用側に書く
-- **公開する型と内部の型を区別する**: 公開するものは `index.ts` から export し、変更を破壊的変更として扱う
-- **型を移動したら import を直す**: 旧ファイルに `export type { X }` の re-export を残さない
+## テスト
 
-## Import Organization
-
-```typescript
-// 外部ライブラリ
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { Button } from '@14ch/svelte-ui';
-
-// パスエイリアス（$lib = src/lib/）
-import type { AuthStore } from '$lib/models/auth/auth.types';
-
-// 相対インポート（同一ディレクトリ内）
-import AuthField from './AuthField.svelte';
-```
-
-**Path Aliases**: `$lib/` → `src/lib/`（SvelteKit 標準）
-
-- **`src/lib` から `src/routes` を import しない。** 逆向きの依存であり、配布物がショーケースに依存する
-- **`$app/*` を import してよいのは `components/` だけ。** `models/` と `stores/` は参照しない（→ `tech.md`「SvelteKit を前提とする」）
-- **ブラウザの保存領域（`sessionStorage` など）に触るのも `components/` だけ。** 効果を持つものを、判定と状態の層へ入れない
+- テストの補助（Firebase の差し替え・偽のストア・エミュレータへの接続）は `src/tests/support/` に置く。`src/lib` と同じ並びの外にある
+- `*.emulator.test.ts` はエミュレータに当てるテスト（→ `tech.md`）
 
 ## CSS / スタイル記法
 
@@ -128,10 +87,8 @@ import AuthField from './AuthField.svelte';
 
 ## Code Organization Principles
 
-- **Firebase Auth の呼び出しは `src/lib/stores/` に集約する。** 画面から `firebase/auth` を直接呼ばない
 - **組み込み側の判断を内部に抱えない。** 特定のアプリだけに必要な分岐が現れたら、設定・コールバック・文言として外へ出す（→ `product.md`）
 - **例外を投げない。** 失敗は戻り値で表す（→ `tech.md`「エラーは例外で投げず、判別可能な共用体で返す」）
-- **過度な共通化をしない。** 画面ごとに将来分岐しうる UI は、共通コンポーネント化せず各画面に素直に書く。判断基準は「この共通物を変えると、意図しない他画面に影響するか？」
 
 ---
 

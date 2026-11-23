@@ -10,14 +10,13 @@ import {
 	type Auth,
 	type User
 } from 'firebase/auth';
-import { normalizeEmail, toAuthError } from '$lib/models/auth/auth';
-import { SLOT_APP_PREFIX } from '$lib/models/auth/auth.constants';
-import { latestSignedIn, reconcileSlots, representativeOf } from '$lib/models/auth/slots';
+import { normalizeEmail, toAuthError } from '#lib/models/auth/auth';
+import { SLOT_APP_PREFIX } from '#lib/models/slot/slot.constants';
+import { latestSignedIn, reconcileSlots, representativeOf } from '#lib/models/slot/slot';
 import type {
 	AccountFailure,
 	AccountOperation,
 	AccountOperationError,
-	AccountPersistence,
 	AccountResult,
 	AccountSummary,
 	AuthConfig,
@@ -25,12 +24,15 @@ import type {
 	AuthStage,
 	AuthStore,
 	SignOutAllResult,
+	StorageStatus
+} from '#lib/models/auth/auth.types';
+import type {
+	AccountPersistence,
 	Slot,
 	SlotObservation,
 	SlotReconciliation,
-	StorageResult,
-	StorageStatus
-} from '$lib/models/auth/auth.types';
+	StorageResult
+} from '#lib/models/slot/slot.types';
 import { createSlotStore } from './slot.svelte';
 
 /**

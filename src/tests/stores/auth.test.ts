@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FirebaseError } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
-import type { AuthConfig, AuthStore } from '$lib/models/auth/auth.types';
-import { memoryBrowser } from '../support/memoryPersistence';
+import type { AuthConfig, AuthStore } from '#lib/models/auth/auth.types';
+import { memoryBrowser } from '#tests/support/memoryPersistence';
 import {
 	authOf,
 	firebaseAppMock,
@@ -15,16 +15,16 @@ import {
 	resetFirebaseFake,
 	signInElsewhere,
 	signOutElsewhere
-} from './firebaseFake';
+} from '#tests/support/firebaseFake';
 
 vi.mock('firebase/auth', () => firebaseAuthMock);
 // FirebaseError は本物を使う。差し替えは、このファイルの import より先に評価されるため読み込み直す
 vi.mock('firebase/app', async (importOriginal) => ({
 	...(await importOriginal<typeof import('firebase/app')>()),
-	...(await import('./firebaseFake')).firebaseAppMock
+	...(await import('#tests/support/firebaseFake')).firebaseAppMock
 }));
 
-const { createAuthStore } = await import('$lib/stores/auth.svelte');
+const { createAuthStore } = await import('#lib/stores/auth.svelte');
 
 const routes = {
 	signIn: '/signin',

@@ -15,14 +15,14 @@ import {
 	type Auth,
 	type User
 } from 'firebase/auth';
-import { normalizeEmail, toAuthError, unmetRequirementsOf } from '$lib/models/auth/auth';
+import { normalizeEmail, toAuthError, unmetRequirementsOf } from '#lib/models/auth/auth';
 import type {
 	AuthConfig,
 	AuthError,
 	AuthResult,
-	PasswordRequirement,
-	SlotStore
-} from '$lib/models/auth/auth.types';
+	PasswordRequirement
+} from '#lib/models/auth/auth.types';
+import type { SlotStore } from '#lib/models/slot/slot.types';
 
 /**
  * 1つのスロットの Auth が持つ認証状態と、その Auth への操作。

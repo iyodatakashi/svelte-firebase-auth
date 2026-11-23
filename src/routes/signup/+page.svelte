@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import { SignUp, type AuthStore } from '$lib/index';
-
-	const store = getContext<AuthStore>('authStore');
+	import SignUpPage from '#showcase/features/signUp/SignUpPage.svelte';
 </script>
 
-<SignUp {store} />
+<SignUpPage />

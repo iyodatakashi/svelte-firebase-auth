@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import { PasswordChange, type AuthStore } from '$lib/index';
-
-	const store = getContext<AuthStore>('authStore');
+	import PasswordChangePage from '#showcase/features/passwordChange/PasswordChangePage.svelte';
 </script>
 
-<PasswordChange {store} />
+<PasswordChangePage />

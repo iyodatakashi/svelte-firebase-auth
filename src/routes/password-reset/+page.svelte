@@ -1,8 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
-	import { PasswordReset, type AuthStore } from '$lib/index';
-
-	const store = getContext<AuthStore>('authStore');
+	import PasswordResetPage from '#showcase/features/passwordReset/PasswordResetPage.svelte';
 </script>
 
-<PasswordReset {store} />
+<PasswordResetPage />

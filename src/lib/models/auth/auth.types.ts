@@ -1,6 +1,7 @@
 import type { Snippet } from 'svelte';
-import type { FirebaseApp } from 'firebase/app';
 import type { Auth, User } from 'firebase/auth';
+import type { AuthMessagesOverride } from '#lib/models/messages/messages.types';
+import type { AccountPersistence } from '#lib/models/slot/slot.types';
 
 // =============================================================================
 // エラーの語彙
@@ -84,56 +85,6 @@ export type AuthStage =
 	/** 通過。組み込み先が求める条件を満たしている */
 	| 'ready';
 
-/** 保持する戻り先。保持したときのアカウントに結びつける */
-export interface HeldReturnTo {
-	readonly path: string;
-	/**
-	 * 使用中のアカウントが離れたときに開いていた経路なら、そのアカウントの uid。
-	 * アカウントを使っていない状態で開いた経路なら `null` で、どのアカウントにも使う
-	 */
-	readonly ownerUid: string | null;
-}
-
-/** 到達ガードが最後に内容を見せた経路と、そのときのアカウント */
-export interface ShownRoute {
-	readonly path: string;
-	readonly uid: string;
-}
-
-/** 到達ガードの判定。効果を持たない */
-export type AuthGuardDecision =
-	/** 初回の判定が未了。何もしない */
-	| { readonly kind: 'wait' }
-	/** 現在の経路に留まってよい */
-	| { readonly kind: 'allow' }
-	/** 遷移せず、保護された内容を出さずに、アカウントが選ばれるのを待つ */
-	| {
-			readonly kind: 'select';
-			/** 選択の後に戻る先として保持すべきもの。`null` は破棄を意味する */
-			readonly returnTo: HeldReturnTo | null;
-	  }
-	| {
-			readonly kind: 'redirect';
-			readonly to: string;
-			/** 振り替えの後に保持すべき戻り先。`null` は破棄を意味する */
-			readonly returnTo: HeldReturnTo | null;
-	  };
-
-export interface AuthGuardInput {
-	readonly stage: AuthStage;
-	/** 現在の経路。根からの相対パス（`pathname` と問い合わせ文字列） */
-	readonly currentPath: string;
-	readonly routes: AuthRoutes;
-	/** 保持されている戻り先。無ければ `null` */
-	readonly returnTo: HeldReturnTo | null;
-	/** 使用中のアカウントの uid。無ければ `null` */
-	readonly accountUid: string | null;
-	/** 保持しているアカウントの uid */
-	readonly accountUids: readonly string[];
-	/** 最後に内容を見せた経路。戻り先の持ち主を決めるのに使う */
-	readonly lastShown: ShownRoute | null;
-}
-
 // =============================================================================
 // アカウント
 // =============================================================================
@@ -196,90 +147,8 @@ export interface AccountOperation {
 export type StorageStatus = 'available' | 'unavailable';
 
 // =============================================================================
-// ブラウザ保存の契約
-// =============================================================================
-
-/** スロット記録。メールアドレス・パスワード・トークンは持たない */
-export interface StoredSlot {
-	readonly version: 1;
-	readonly id: string;
-	/** このスロットにログインしているはずの UID */
-	readonly uid: string;
-}
-
-/** 保存の成否。保存領域を使えないときは失敗として返し、例外を投げない */
-export type StorageResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false };
-
-/** ストアがブラウザの保存領域に触るための窓口。`AuthSession` が渡す */
-export interface AccountPersistence {
-	readSlots(): StorageResult<readonly StoredSlot[]>;
-	writeSlot(slot: StoredSlot): StorageResult<void>;
-	removeSlot(id: string): StorageResult<void>;
-	/** タブの選択。`undefined` はタブ内の記録なし、`null` は明示的な未選択 */
-	readActiveId(): StorageResult<string | null | undefined>;
-	writeActiveId(id: string | null): StorageResult<void>;
-	/** 同じブラウザで最後に開いたアカウント */
-	readLastOpenedId(): StorageResult<string | null>;
-	writeLastOpenedId(id: string | null): StorageResult<void>;
-	/** 別のタブでのスロット記録の変更を受け取る。解除する関数を返す */
-	onSlotsChanged(listener: () => void): () => void;
-}
-
-/** 照合のために観測した、1つのスロットの状態 */
-export interface SlotObservation {
-	readonly id: string;
-	/** 記録の UID */
-	readonly expectedUid: string;
-	/** 実際にログインしている UID。ログインしていなければ `null` */
-	readonly uid: string | null;
-}
-
-/** スロットの照合の結果 */
-export interface SlotReconciliation {
-	/** 一覧に入れるスロット。ID の順 */
-	readonly memberIds: readonly string[];
-	/** ログインしていない、または UID が記録と異なるスロット */
-	readonly droppedIds: readonly string[];
-	/** 同じ UID の重複。重複側の ID から代表の ID への対応 */
-	readonly duplicates: ReadonlyMap<string, string>;
-}
-
-// =============================================================================
 // ストア
 // =============================================================================
-
-/**
- * 1つのスロットの Auth を扱う内部のストア。公開しない。
- * 画面と組み込み側は、これを束ねた `AuthStore` だけに触れる
- */
-export interface SlotStore {
-	readonly user: User | null;
-	/** 初回の認証状態の判定が完了したか。1回の購読の中では false へ戻らない */
-	readonly isResolved: boolean;
-	readonly isEmailVerified: boolean;
-
-	signIn(email: string, password: string): Promise<AuthResult>;
-	/** 成功時はサインイン済みにし、確認を求める設定なら確認メールを送る */
-	signUp(email: string, password: string): Promise<AuthResult>;
-	signOut(): Promise<AuthResult>;
-	/** 現在のパスワードによる再認証を伴う */
-	changePassword(currentPassword: string, nextPassword: string): Promise<AuthResult>;
-	sendEmailVerification(): Promise<AuthResult>;
-	/** 利用者と ID トークンのクレームを取り直し、確認済みかどうかを返す */
-	refreshVerification(): Promise<boolean>;
-	/** 認証状態の購読を開始する。初回の判定が済んだ時点で解決する */
-	start(): Promise<void>;
-	/** 購読を解除し、公開している状態を初期化する */
-	stop(): void;
-}
-
-/** スロット。アカウント1件のログイン状態を保持する、名前付き App・Auth と SlotStore の組 */
-export interface Slot {
-	readonly id: string;
-	readonly app: FirebaseApp;
-	readonly auth: Auth;
-	readonly store: SlotStore;
-}
 
 /**
  * 公開する唯一の認証ストア。保持しているアカウントを束ね、選択中の1件を公開する。
@@ -365,72 +234,6 @@ export interface AuthGateProps {
 	/** 初回の判定が済むまでのあいだ見せるもの。省略時は何も描画しない */
 	readonly pending?: Snippet;
 }
-
-// =============================================================================
-// 文言
-// =============================================================================
-
-/** 同じ語彙でも案内が分かれる画面を区別する */
-export type AuthErrorContext =
-	'sign-in' | 'sign-up' | 'verify-email' | 'password-change' | 'password-reset';
-
-/** 画面に出す文言のすべて。差し替えは項目単位で行う */
-export interface AuthMessages {
-	// 入力欄
-	readonly email: string;
-	readonly password: string;
-	readonly currentPassword: string;
-	readonly newPassword: string;
-
-	// 送信
-	readonly signInSubmit: string;
-	readonly signUpSubmit: string;
-	readonly passwordChangeSubmit: string;
-	readonly passwordResetSubmit: string;
-
-	// 移動。行き先の画面を名にする。出発した画面は名に持たない
-	readonly goToSignUp: string;
-	readonly goToPasswordReset: string;
-	readonly backToSignIn: string;
-	/** 変更を終えた利用者に示す、ただ1つの次の一手。行き先は組み込み側のページ（afterSignIn） */
-	readonly back: string;
-
-	// そのほかの操作
-	readonly signOut: string;
-	readonly cancel: string;
-
-	// 確認待ち
-	readonly verifyEmailSentTo: (email: string) => string;
-	readonly verifyEmailResend: string;
-	readonly verifyEmailResent: string;
-
-	// パスワードの変更
-	readonly passwordChangeDone: string;
-
-	// パスワードの再設定
-	readonly passwordResetDescription: string;
-	readonly passwordResetSent: string;
-
-	/** 確認待ちと再設定の、どちらの送信の後にも出す */
-	readonly checkSpam: string;
-
-	// アカウントの操作の失敗
-	readonly accountLimitReached: string;
-	readonly operationBusy: string;
-	/** 切り替えようとしたアカウントのログイン状態が失われている */
-	readonly accountUnavailable: string;
-
-	/** 語彙ごとの既定の案内。語彙を増やすと、既定の文言を足すまで型検査が通らない */
-	readonly errors: Readonly<Record<AuthErrorKind, string>>;
-	/** 画面によって案内が分かれるものだけ、専用の項目を持つ */
-	readonly currentPasswordInvalid: string;
-	readonly weakPasswordReason: (requirements: readonly PasswordRequirement[]) => string;
-}
-
-/** 差し替え。`errors` だけは語彙単位で差し替えられる */
-export type AuthMessagesOverride = Partial<Omit<AuthMessages, 'errors'>> & {
-	readonly errors?: Partial<Record<AuthErrorKind, string>>;
-};
 
 // =============================================================================
 // 画面の props

@@ -40,6 +40,11 @@
 			"svelte": "./dist/index.js"
 		}
 	},
+	"imports": {
+		"#lib/*": "./src/lib/*",
+		"#showcase/*": "./src/showcase/*",
+		"#tests/*": "./src/tests/*"
+	},
 	"peerDependencies": {
 		"@14ch/svelte-ui": "0.0.x",
 		"@sveltejs/kit": "^2.63.0 || ^3.0.0",
@@ -52,7 +57,7 @@
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-auto": "^9.0.0",
 		"@sveltejs/kit": "^3.4.0",
-		"@sveltejs/package": "^2.5.8",
+		"@sveltejs/package": "^3.0.3",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^24",
 		"@vitest/browser-playwright": "^4.1.8",

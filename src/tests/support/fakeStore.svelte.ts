@@ -12,7 +12,7 @@ import type {
 	AuthStore,
 	PasswordRequirement,
 	StorageStatus
-} from '$lib/models/auth/auth.types';
+} from '#lib/models/auth/auth.types';
 
 export interface FakeStoreOptions {
 	readonly email?: string | null;

@@ -15,10 +15,7 @@ export default defineConfig({
 			// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
 			// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
 			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-			adapter: adapter(),
-
-			// kit 3 で $lib が廃止された。svelte-package が dist では相対パスに直すので、alias で残す
-			alias: { $lib: 'src/lib' }
+			adapter: adapter()
 		})
 	],
 	// `.svelte` のまま配布されるパッケージ。事前バンドルすると svelte の実体が二重になり描画に失敗する。
@@ -53,9 +50,8 @@ export default defineConfig({
 						provider: playwright(),
 						instances: [{ browser: 'chromium', headless: true }]
 					},
-					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
-					setupFiles: ['./src/tests/support/setupClient.ts'],
-					exclude: ['src/lib/server/**']
+					include: ['src/tests/**/*.svelte.{test,spec}.{js,ts}'],
+					setupFiles: ['./src/tests/support/setupClient.ts']
 				}
 			},
 
@@ -64,8 +60,11 @@ export default defineConfig({
 				test: {
 					name: 'server',
 					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
-					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}', 'src/**/*.emulator.test.{js,ts}']
+					include: ['src/tests/**/*.{test,spec}.{js,ts}'],
+					exclude: [
+						'src/tests/**/*.svelte.{test,spec}.{js,ts}',
+						'src/tests/**/*.emulator.test.{js,ts}'
+					]
 				}
 			},
 
@@ -74,7 +73,7 @@ export default defineConfig({
 				test: {
 					name: 'emulator',
 					environment: 'node',
-					include: ['src/**/*.emulator.test.{js,ts}'],
+					include: ['src/tests/**/*.emulator.test.{js,ts}'],
 					// 各ファイルがエミュレータの利用者を消して始める。並行に走らせると互いの利用者を消し合う
 					fileParallelism: false,
 					// エミュレータの起動と、確認メールの往復ぶんの余裕を見る

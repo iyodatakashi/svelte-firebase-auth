@@ -10,7 +10,12 @@
 		"sourceMap": true,
 		"strict": true,
 		"module": "esnext",
-		"moduleResolution": "bundler"
+		"moduleResolution": "bundler",
+		"paths": {
+			"#lib/*": ["./src/lib/*"],
+			"#showcase/*": ["./src/showcase/*"],
+			"#tests/*": ["./src/tests/*"]
+		}
 	},
 	"exclude": ["dist", "node_modules"]
 }

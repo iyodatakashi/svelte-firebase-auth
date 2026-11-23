@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getIdTokenResult, reload, signInWithEmailAndPassword } from 'firebase/auth';
 import type { Auth } from 'firebase/auth';
-import { createSlotStore } from '$lib/stores/slot.svelte';
-import type { SlotStore } from '$lib/models/auth/auth.types';
+import { createSlotStore } from '#lib/stores/slot.svelte';
+import type { SlotStore } from '#lib/models/slot/slot.types';
 import {
 	clearEmulatorUsers,
 	createEmulatorAuth,
 	createEmulatorUser,
 	fetchOobCodes,
 	markEmulatorUserVerified
-} from '../support/emulator';
+} from '#tests/support/emulator';
 
 const config = {
 	selfRegistration: true,

@@ -187,7 +187,7 @@ When a signed-out user opens a protected route, **that route is kept as the retu
 - Authentication routes themselves are never used as the return path
 - **A return path belongs to the account that left it.** When the account in use signs out or is deselected while a route is open, that route is kept for that account only: if the same account (by `uid`) becomes ready again it returns there; if another account becomes ready it goes to `afterSignIn` instead, even when it was selected on the same route (including when it was the only one left and was selected automatically). Switching accounts yourself while the previous one stays signed in keeps the route. A route opened while no account is in use (first visit, after signing out of every account, or after a reload) is kept for any account, so opening a shared link and then signing in still works
 
-The showcase in `src/routes/` is a working example of setting up routes and using `AuthGate` (**it is not part of the package**).
+The showcase in `src/routes/` and `src/showcase/` is a working example of setting up routes and using `AuthGate` (**it is not part of the package**).
 
 ### Multiple accounts
 
@@ -518,7 +518,7 @@ Changes for host apps that used an earlier version:
 ## Development
 
 ```bash
-npm run dev            # Showcase in src/routes (connects to the Auth and Firestore emulators)
+npm run dev            # Showcase in src/routes and src/showcase (connects to the Auth and Firestore emulators)
 npm run emulators      # Auth and Firestore emulators for the showcase (data kept in .emulator-data)
 npm run check          # Type check
 npm run lint           # Formatting and static analysis

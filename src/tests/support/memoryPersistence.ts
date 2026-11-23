@@ -1,4 +1,4 @@
-import type { AccountPersistence, StorageResult, StoredSlot } from '$lib/models/auth/auth.types';
+import type { AccountPersistence, StorageResult, StoredSlot } from '#lib/models/slot/slot.types';
 
 /**
  * ブラウザ保存の差し替え。ブラウザ共通の領域（スロット記録・最後に開いたアカウント）を共有し、
