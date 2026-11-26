@@ -290,6 +290,13 @@ While unselected, the sign-in, sign-up, and password reset routes stay open: sig
 
 **Create Firestore, Functions, and Storage from your Firebase app once, as usual.** The library copies the account in use into the `Auth` you passed, so the same instances run as the account in use after every switch. Your data layer does not need to know about multiple accounts.
 
+**With multiple accounts, do not share Firestore's cache across tabs.** Each tab has its own account in use, but a Firestore created with `persistentLocalCache({ tabManager: persistentMultipleTabManager() })` talks to the server from one tab only, and that tab carries the listeners and writes of every other tab **as its own account**. In a tab that uses a different account:
+
+- Listeners fail with `permission-denied`
+- Writes never reach the server. They pile up in `localStorage` (`firestore_mutations_*`) until it is full, and Firestore then stops with `QuotaExceededError`
+
+Which tab talks to the server changes when that tab sleeps or is closed, so the failure comes and goes. Firestore has no setting that shares the cache while each tab talks to the server as its own account. Create Firestore with a cache that stays inside the tab: the default `getFirestore(app)`, or `memoryLocalCache()`. With `multiAccount: false` every tab uses the same account, so this limit does not apply.
+
 What does **not** switch by itself is what the host app already holds for the previous account:
 
 - **Re-subscribe and discard displayed data when the account changes.** Listeners started for the previous account keep returning its data
