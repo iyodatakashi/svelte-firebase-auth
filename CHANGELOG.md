@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.0.7] - 2026-11-26
+
+### Changed
+
+- The README states that, with multiple accounts, Firestore must not be created with a cache shared across tabs (`persistentMultipleTabManager`), and why.
+
 ## [0.0.6] - 2026-11-20
 
 ### Changed
