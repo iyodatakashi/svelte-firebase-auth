@@ -1020,6 +1020,178 @@ describe('タブの選択と復元 — 要件 4.2, 4.3, 4.7, 4.8, 4.11, 4.12', (
 	});
 });
 
+describe('選択を全タブでそろえる — 要件 4.16〜4.21（multi-account-auth）', () => {
+	const openSharing = async (nextConfig: AuthConfig = config) => {
+		const base = createBaseAuth();
+		const store = createAuthStore(base, nextConfig);
+		const sharing = browser.openSharingTab();
+		await store.start(sharing.persistence);
+		return { store, base, sharing };
+	};
+
+	/** A と B を保持し、A を選択した状態で開いている */
+	const prepare = async () => {
+		const opened = await openSharing();
+		const a = await signIn(opened.store, 'a@example.com');
+		const b = await signIn(opened.store, 'b@example.com');
+		await opened.store.selectAccount(a.id);
+		return { ...opened, a, b };
+	};
+
+	it('選択を、ブラウザで1つの記録に書く', async () => {
+		const { a } = await prepare();
+		expect(browser.sharedActiveId).toBe(a.id);
+	});
+
+	it('別のタブで選択が変わったら、同じアカウントへ移る。記録は書き換えない', async () => {
+		const { store, base, a, b } = await prepare();
+
+		browser.selectElsewhere(b.id);
+		await settle();
+
+		expect(store.activeId).toBe(b.id);
+		expect(base.currentUser?.uid).toBe(b.uid);
+		expect(browser.sharedActiveId).toBe(b.id);
+		// 最後に開いたアカウントは、選んだタブが書く
+		expect(browser.lastOpenedId).toBe(a.id);
+	});
+
+	it('別のタブで未選択になったら、未選択になる', async () => {
+		const { store, base } = await prepare();
+
+		browser.selectElsewhere(null);
+		await settle();
+
+		expect(store.activeId).toBeNull();
+		expect(store.stage).toBe('account-unselected');
+		expect(base.currentUser).toBeNull();
+	});
+
+	it('別のタブでサインインしたアカウントが選ばれたら、一覧へ加えてそのアカウントへ移る', async () => {
+		const { store, a } = await prepare();
+
+		// サインインしたタブは、スロット記録を書いてから選択を記録する。選択の通知が先に届いても従う
+		const otherId = `${a.id}-other`;
+		const other = signInElsewhere(slotAppName(otherId), 'c@example.com');
+		browser.slots.set(otherId, { version: 1, id: otherId, uid: other.uid });
+		browser.selectElsewhere(otherId);
+		await settle();
+		await settle();
+
+		expect(store.activeAccount?.email).toBe('c@example.com');
+	});
+
+	it('スロット記録と選択の通知が続けて届いても、取り込みを待ってからそのアカウントへ移る', async () => {
+		const { store, a } = await prepare();
+
+		const otherId = `${a.id}-other`;
+		const other = signInElsewhere(slotAppName(otherId), 'c@example.com');
+		browser.writeSlotElsewhere({ version: 1, id: otherId, uid: other.uid });
+		browser.selectElsewhere(otherId);
+		await settle();
+		await settle();
+
+		expect(store.activeAccount?.email).toBe('c@example.com');
+	});
+
+	it('別のタブが選んだアカウントを保持していなければ、前のアカウントのまま残らず未選択になる', async () => {
+		const { store, base } = await prepare();
+
+		browser.selectElsewhere('missing');
+		await settle();
+
+		expect(store.activeId).toBeNull();
+		expect(base.currentUser).toBeNull();
+	});
+
+	it('別のタブが選んだアカウントを複製できなければ、未選択になる', async () => {
+		const { store, base, b } = await prepare();
+
+		firebaseAuthMock.updateCurrentUser.mockRejectedValueOnce(
+			new FirebaseError('auth/network-request-failed', 'offline')
+		);
+		browser.selectElsewhere(b.id);
+		await settle();
+
+		expect(store.activeId).toBeNull();
+		expect(base.currentUser).toBeNull();
+		expect(browser.sharedActiveId).toBe(b.id);
+	});
+
+	it('切り替えは、複製の前に選択を記録し、他のタブの土台がそろうまで切り替え先を公開しない', async () => {
+		const { store, base, sharing, a, b } = await prepare();
+		const align = browser.keepOthersBehind();
+
+		const switching = store.selectAccount(b.id);
+		await settle();
+
+		expect(browser.sharedActiveId).toBe(b.id);
+		expect(base.currentUser?.uid).toBe(b.uid);
+		expect(sharing.heldId).toBe(b.id);
+		expect(store.activeId).toBe(a.id);
+
+		align();
+		expect((await switching).ok).toBe(true);
+		expect(store.activeId).toBe(b.id);
+	});
+
+	it('切り替えに失敗したら、選択の記録を元へ戻す', async () => {
+		const { store, a, b } = await prepare();
+
+		firebaseAuthMock.updateCurrentUser.mockRejectedValueOnce(
+			new FirebaseError('auth/network-request-failed', 'offline')
+		);
+		const result = await store.selectAccount(b.id);
+
+		expect(result.ok).toBe(false);
+		expect(store.activeId).toBe(a.id);
+		expect(browser.sharedActiveId).toBe(a.id);
+	});
+
+	it('開き直すと、他のタブが最後に選んだアカウントを選ぶ', async () => {
+		const { store, b } = await prepare();
+		store.stop();
+		reloadFirebase();
+		browser.selectElsewhereSilently(b.id);
+
+		const reopened = await openSharing();
+
+		expect(reopened.store.activeId).toBe(b.id);
+	});
+
+	it('開始の間に別のタブが選択を変えていたら、開始を終える前にそれへ移る', async () => {
+		const { store, a, b } = await prepare();
+		store.stop();
+		reloadFirebase();
+
+		const held = holdNextCopy();
+		const tab = browser.openSharingTab();
+		const base = createBaseAuth();
+		const reopened = createAuthStore(base, config);
+		const starting = reopened.start(tab.persistence);
+		await settle();
+		browser.selectElsewhereSilently(b.id);
+		held.release();
+		await starting;
+
+		expect(reopened.isResolved).toBe(true);
+		expect(reopened.activeId).toBe(b.id);
+		expect(browser.sharedActiveId).toBe(b.id);
+		expect(a.id).not.toBe(b.id);
+	});
+
+	it('単一アカウント指定では、選択の記録を読まず、書かない', async () => {
+		const { store } = await openSharing(single);
+		const a = await signIn(store, 'a@example.com');
+
+		browser.selectElsewhere('missing');
+		await settle();
+
+		expect(store.activeId).toBe(a.id);
+		expect(browser.sharedActiveId).toBe('missing');
+	});
+});
+
 describe('https でないページ — 要件 2.2（multi-account-auth）', () => {
 	it('crypto.randomUUID が使えない環境でも、サインインできる', async () => {
 		// https と localhost 以外では crypto.randomUUID が無い

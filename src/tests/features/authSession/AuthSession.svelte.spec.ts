@@ -51,9 +51,11 @@ const capturingStore = () => {
 	};
 };
 
-const mount = async (namespace = NAMESPACE) => {
+const mount = async (namespace = NAMESPACE, syncAccountAcrossTabs = false) => {
 	const capturing = capturingStore();
-	const screen = await render(AuthSession, { props: { store: capturing.store, namespace } });
+	const screen = await render(AuthSession, {
+		props: { store: capturing.store, namespace, syncAccountAcrossTabs }
+	});
 	await vi.waitFor(() => expect(capturing.store.start).toHaveBeenCalledOnce());
 	return { ...capturing, screen };
 };
@@ -161,6 +163,121 @@ describe('選択の保存 — 要件 4.2, 4.11, 4.12（multi-account-auth）', (
 
 		persistence().writeLastOpenedId(null);
 		expect(persistence().readLastOpenedId()).toEqual({ ok: true, value: null });
+	});
+});
+
+describe('選択を全タブでそろえる — 要件 4.16, 4.17, 4.19, 4.21（multi-account-auth）', () => {
+	const ACTIVE_KEY = `svelte-firebase-auth:${NAMESPACE}:active`;
+
+	it('選択をブラウザ共通の保存領域に置き、記録なしと明示的な未選択を区別する', async () => {
+		const { persistence } = await mount(NAMESPACE, true);
+		expect(persistence().readActiveId()).toEqual({ ok: true, value: undefined });
+
+		persistence().writeActiveId(null);
+		expect(persistence().readActiveId()).toEqual({ ok: true, value: null });
+
+		persistence().writeActiveId('a');
+		expect(persistence().readActiveId()).toEqual({ ok: true, value: 'a' });
+		expect(localStorage.getItem(ACTIVE_KEY)).toBe('"a"');
+		expect(sessionStorage.length).toBe(0);
+
+		persistence().writeActiveId(undefined);
+		expect(persistence().readActiveId()).toEqual({ ok: true, value: undefined });
+	});
+
+	it('別のタブでの選択の変更を知らせ、スロット記録の変更では知らせない', async () => {
+		const { persistence } = await mount(NAMESPACE, true);
+		const listener = vi.fn();
+		const unsubscribe = persistence().onSelectionChanged(listener);
+
+		window.dispatchEvent(
+			new StorageEvent('storage', { key: ACTIVE_KEY, storageArea: localStorage })
+		);
+		window.dispatchEvent(
+			new StorageEvent('storage', {
+				key: `svelte-firebase-auth:${NAMESPACE}:slot:a`,
+				storageArea: localStorage
+			})
+		);
+		expect(listener).toHaveBeenCalledOnce();
+
+		unsubscribe();
+		window.dispatchEvent(
+			new StorageEvent('storage', { key: ACTIVE_KEY, storageArea: localStorage })
+		);
+		expect(listener).toHaveBeenCalledOnce();
+	});
+
+	it('選択をタブごとに持つときは、選択の変更を知らせない', async () => {
+		const { persistence } = await mount();
+		const listener = vi.fn();
+		persistence().onSelectionChanged(listener);
+
+		window.dispatchEvent(
+			new StorageEvent('storage', { key: ACTIVE_KEY, storageArea: localStorage })
+		);
+		expect(listener).not.toHaveBeenCalled();
+	});
+
+	it('他のタブの土台が同じアカウントになるまで待つ', async () => {
+		const first = await mount(NAMESPACE, true);
+		const second = await mount(NAMESPACE, true);
+		await first.persistence().holdSelection('a');
+		await second.persistence().holdSelection('a');
+
+		let isHeld = false;
+		const holding = first
+			.persistence()
+			.holdSelection('b')
+			.then(() => {
+				isHeld = true;
+			});
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(isHeld).toBe(false);
+
+		await second.persistence().holdSelection('b');
+		await holding;
+		expect(isHeld).toBe(true);
+	});
+
+	it('閉じたタブを待たない', async () => {
+		const first = await mount(NAMESPACE, true);
+		const second = await mount(NAMESPACE, true);
+		await first.persistence().holdSelection('a');
+		await second.persistence().holdSelection('a');
+
+		const holding = first.persistence().holdSelection('b');
+		await second.screen.unmount();
+
+		await holding;
+	});
+
+	it('応答しないタブは、時間を限って待つのをやめる', async () => {
+		const first = await mount(NAMESPACE, true);
+		const second = await mount(NAMESPACE, true);
+		await first.persistence().holdSelection('a');
+		await second.persistence().holdSelection('a');
+
+		const startedAt = performance.now();
+		await first.persistence().holdSelection('b');
+
+		expect(performance.now() - startedAt).toBeGreaterThan(1500);
+	});
+
+	it('他の名前空間のタブを待たない', async () => {
+		const first = await mount(NAMESPACE, true);
+		const other = await mount('other', true);
+		await other.persistence().holdSelection('a');
+
+		await first.persistence().holdSelection('b');
+	});
+
+	it('選択をタブごとに持つときは、待たない', async () => {
+		const first = await mount();
+		const second = await mount(NAMESPACE, true);
+		await second.persistence().holdSelection('a');
+
+		await first.persistence().holdSelection('b');
 	});
 });
 

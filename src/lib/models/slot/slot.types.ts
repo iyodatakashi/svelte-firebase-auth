@@ -18,14 +18,26 @@ export interface AccountPersistence {
 	readSlots(): StorageResult<readonly StoredSlot[]>;
 	writeSlot(slot: StoredSlot): StorageResult<void>;
 	removeSlot(id: string): StorageResult<void>;
-	/** タブの選択。`undefined` はタブ内の記録なし、`null` は明示的な未選択 */
+	/** 選択の記録。`undefined` は記録なし、`null` は明示的な未選択 */
 	readActiveId(): StorageResult<string | null | undefined>;
-	writeActiveId(id: string | null): StorageResult<void>;
+	/** `undefined` は記録を消す */
+	writeActiveId(id: string | null | undefined): StorageResult<void>;
 	/** 同じブラウザで最後に開いたアカウント */
 	readLastOpenedId(): StorageResult<string | null>;
 	writeLastOpenedId(id: string | null): StorageResult<void>;
 	/** 別のタブでのスロット記録の変更を受け取る。解除する関数を返す */
 	onSlotsChanged(listener: () => void): () => void;
+	/**
+	 * 別のタブでの選択の記録の変更を受け取る。解除する関数を返す。
+	 * 選択をタブごとに持つときは、他のタブの記録が見えないため届かない
+	 */
+	onSelectionChanged(listener: () => void): () => void;
+	/**
+	 * このタブの土台の Auth が `id` のアカウント（`null` は空）になったことを他のタブへ示し、
+	 * 選択を共有する他のタブの土台が同じになるまで待つ。応答しないタブは、時間を限って待つのをやめる。
+	 * 選択をタブごとに持つときは、待つ相手が無い
+	 */
+	holdSelection(id: string | null): Promise<void>;
 }
 
 /** 照合のために観測した、1つのスロットの状態 */

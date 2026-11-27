@@ -433,11 +433,13 @@ interface AccountPersistence {
 	readSlots(): StorageResult<readonly StoredSlot[]>;
 	writeSlot(slot: StoredSlot): StorageResult<void>;
 	removeSlot(id: string): StorageResult<void>;
-	readActiveId(): StorageResult<string | null | undefined>; // undefined はタブ内記録なし、null は明示的な未選択
-	writeActiveId(id: string | null): StorageResult<void>;
+	readActiveId(): StorageResult<string | null | undefined>; // undefined は記録なし、null は明示的な未選択
+	writeActiveId(id: string | null | undefined): StorageResult<void>; // undefined は記録を消す
 	readLastOpenedId(): StorageResult<string | null>;
 	writeLastOpenedId(id: string | null): StorageResult<void>;
 	onSlotsChanged(listener: () => void): () => void;
+	onSelectionChanged(listener: () => void): () => void; // 選択をタブごとに持つときは届かない
+	holdSelection(id: string | null): Promise<void>; // 選択をタブごとに持つときは待たない
 }
 
 type StorageResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false };
@@ -445,8 +447,18 @@ type StorageResult<T> = { readonly ok: true; readonly value: T } | { readonly ok
 interface AuthSessionProps {
 	readonly store: AuthStore;
 	readonly namespace: string;
+	readonly syncAccountAcrossTabs?: boolean; // 既定は false（選択をタブごとに持つ）
 }
 ```
+
+#### 選択を全タブでそろえる（`syncAccountAcrossTabs`、2026-11-27、要件 4.16〜4.21）
+
+- **置き場所**: 選択の記録を `sessionStorage` でなく `localStorage` の同じキー（`…:active`）に置く。記録の置き場所と他のタブとのやり取りは `AuthSession` が `AccountPersistence` として渡し、ストアは範囲を知らない。タブごとの指定では、他のタブの記録の変更は届かず（`onSelectionChanged`）、待つ相手も無い（`holdSelection`）
+- **選ぶタブ**: 切り替え・サインイン・登録・1件だけ残ったアカウントの選択は、土台の複製の**前に**選択を記録する（`choose`）。他のタブが並行して同じアカウントへ移れる。複製に失敗したら、記録がまだこの操作の値のときに限り元へ戻す。最後に開いたアカウントは、従来どおり成功の後に書く。タブごとの指定では、記録の時点が複製の前へ移るだけで、結果は変わらない
+- **従うタブ**: 記録の変更（`storage` イベント）で、記録のアカウントへ移る（`followSelection`）。記録は書かない。記録のアカウントが一覧に無ければ、先にスロット記録を取り込む（サインインしたタブは、スロット記録を書いてから選択を記録する）。スロット記録の取り込みは1つずつ行い、開いている途中のスロットを後の取り込みが見落とさない。取り込んでも無い・複製に失敗した場合は未選択にする（4.20）。開始の間は通知を受け取れないため、開始の終わりに記録を読み直し、開始時に読んだ値から変わっていれば従う
+- **土台がそろうのを待つ**（4.19）: 各タブは、土台の Auth に入れたアカウントの名前のロック（Web Locks、共有）を持つ。名前は `svelte-firebase-auth:<namespace>:base:<スロット ID>`（空の土台は ID なし）。土台を入れ替えたタブは、新しい名前のロックを取ってから前のロックを手放し、別の名前のロックを持つタブが無くなるまで待って（そのロックを排他で求め、取れたらすぐ手放す）、選択を公開する。待ちは土台の更新の待ち行列の中で行うため、公開の順序は変わらない。閉じたタブのロックはブラウザが外す。待つ上限は 2 秒。Web Locks の無いページ（https でも localhost でもない）では待たない
+- **取らなかった形**: 選択の変更を `BroadcastChannel` で伝え、応答を数える形。開いているタブの一覧を別に持つ必要があり、閉じたタブ・固まったタブの扱いを自分で作ることになる。ロックは、持ち主のタブが無くなればブラウザが外す
+- **単一アカウント指定**: 選択の記録を読まず、書かない。土台がそろうのを待つことだけが働く
 
 保存キーと名前空間は他の組み込み先と衝突させない。保存記録はスロットへの索引であり、認証の真実は各スロットの Auth の状態である。記録に対応する Auth の UID が期待値と異なる場合、そのスロットを一覧に入れない。Auth SDK の内部保存キーには触れない。
 
