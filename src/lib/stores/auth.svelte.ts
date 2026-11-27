@@ -73,7 +73,9 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 	/** 土台を更新する処理の待ち行列。複製もサインアウトも非同期であり、並行すると完了の順で中身が決まる */
 	let baseQueue: Promise<unknown> = Promise.resolve();
 	let persistence: AccountPersistence | null = null;
-	let unsubscribeSlots: (() => void) | null = null;
+	let unsubscribeElsewhere: (() => void) | null = null;
+	/** スロット記録の取り込みの待ち行列 */
+	let adoptions: Promise<void> = Promise.resolve();
 	/** 送信中のサインイン・登録。取りやめるとこれを捨て、後から返った結果を反映しない */
 	let pendingAttempt: object | null = null;
 	/** 開始のたびに進む。停止した後に、前の開始の続きが状態を書き換えないようにする */
@@ -147,8 +149,10 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 			return;
 		}
 
+		const readSelection = () => withStorage((storage) => storage.readActiveId());
+		const recorded = readSelection();
 		const initial = initialSelection(reconciliation);
-		const moved = await moveTo(initial);
+		const moved = initial === null ? await moveTo(null) : await choose(initial);
 		if (!isCurrent()) {
 			return;
 		}
@@ -157,18 +161,30 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 			return;
 		}
 		if (moved.ok && initial !== null) {
-			rememberSelection(initial);
+			rememberLastOpened(initial);
 		}
 
-		unsubscribeSlots = nextPersistence.onSlotsChanged(() => void adoptSlotsFromElsewhere());
+		const unsubscribeSlots = nextPersistence.onSlotsChanged(() => void adoptSlotsFromElsewhere());
+		const unsubscribeSelection = nextPersistence.onSelectionChanged(() => void followSelection());
+		unsubscribeElsewhere = () => {
+			unsubscribeSlots();
+			unsubscribeSelection();
+		};
+		// 開始の間に別のタブが選択を変えていれば、その通知は届いていない
+		if (readSelection() !== (moved.ok && initial !== null ? initial : recorded)) {
+			await followSelection();
+			if (!isCurrent()) {
+				return;
+			}
+		}
 		isResolved = true;
 	};
 
 	/** 購読を解除し、スロットの App を破棄する。ログアウトはしない */
 	const stop = (): void => {
 		generation += 1;
-		unsubscribeSlots?.();
-		unsubscribeSlots = null;
+		unsubscribeElsewhere?.();
+		unsubscribeElsewhere = null;
 		for (const id of [...slots.keys()]) {
 			disposeSlot(id);
 		}
@@ -188,8 +204,8 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 	};
 
 	/**
-	 * 複数アカウント指定では、タブ内の選択記録を優先し、記録が無ければ最後に開いたアカウントを選ぶ。
-	 * 明示的な未選択を引き継いだときは未選択を保つ。ただし保持アカウントが1件だけなら、選ぶ場に
+	 * 複数アカウント指定では、選択の記録を優先し、記録が無ければ最後に開いたアカウントを選ぶ。
+	 * 記録が明示的な未選択なら未選択を保つ。ただし保持アカウントが1件だけなら、選ぶ場に
 	 * 意味が無いため、どの場合もそれを選ぶ
 	 */
 	const initialSelection = (reconciliation: SlotReconciliation): string | null => {
@@ -207,8 +223,17 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		return candidate ?? soleMember();
 	};
 
-	/** 別のタブで書かれたスロット記録を一覧へ加える。現在のタブの選択は変えない */
-	const adoptSlotsFromElsewhere = async (): Promise<void> => {
+	/**
+	 * 別のタブで書かれたスロット記録を一覧へ加える。現在のタブの選択は変えない。
+	 * 先に始めた取り込みが済んでから始める。開いている途中のスロットを、後の取り込みが見落とさない
+	 */
+	const adoptSlotsFromElsewhere = (): Promise<void> => {
+		const result = adoptions.then(adoptSlots);
+		adoptions = result;
+		return result;
+	};
+
+	const adoptSlots = async (): Promise<void> => {
 		const started = generation;
 		const records = (withStorage((storage) => storage.readSlots()) ?? []).filter(
 			({ id }) => !slots.has(id)
@@ -254,10 +279,57 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		if (target !== null || sole === null) {
 			return;
 		}
-		const moved = await moveTo(sole);
+		const moved = await choose(sole);
 		if (moved.ok && target === sole) {
-			rememberSelection(sole);
+			rememberLastOpened(sole);
 		}
+	};
+
+	/**
+	 * 別のタブが書いた選択の記録に、このタブの選択を合わせる。記録は書かない。
+	 * 記録のアカウントをこのタブが保持していなければ、未選択にする
+	 */
+	const followSelection = async (): Promise<void> => {
+		const started = generation;
+		const read = () => withStorage((storage) => storage.readActiveId());
+		const isMember = (id: string | null | undefined) =>
+			typeof id === 'string' && memberIds.includes(id);
+
+		if (!config.multiAccount) {
+			return;
+		}
+		if (typeof read() === 'string' && !isMember(read())) {
+			// サインインしたタブは、スロット記録を書いてから選択を記録する。その通知が先に届いている
+			await adoptSlotsFromElsewhere();
+			if (started !== generation) {
+				return;
+			}
+		}
+		const recorded = read();
+		if (recorded === undefined) {
+			return;
+		}
+		const id = recorded !== null && isMember(recorded) ? recorded : null;
+		if (id === target) {
+			return;
+		}
+		target = id;
+		if (id === null) {
+			hide();
+		}
+		const result = await syncBase();
+		if (!result.ok && target === id) {
+			// 複製できなければ、前のアカウントのまま他のタブと食い違わせない
+			target = null;
+			hide();
+			await syncBase();
+		}
+	};
+
+	/** 土台を空にし終える前に、保護された内容を隠す */
+	const hide = (): void => {
+		activeId = null;
+		user = null;
 	};
 
 	const soleMember = (): string | null => (memberIds.length === 1 ? memberIds[0] : null);
@@ -363,11 +435,12 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		}
 		target = representative ?? (isSigningOutAll ? null : soleMember());
 		if (target === null) {
-			// 複製を空にし終える前に、保護された内容を隠す
-			activeId = null;
-			user = null;
+			hide();
 		}
-		rememberSelection(target);
+		announce(target);
+		if (target !== null) {
+			rememberLastOpened(target);
+		}
 		return syncBase();
 	};
 
@@ -377,7 +450,9 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 
 	/**
 	 * 土台の Auth を目標に合わせる。実行する時点で目標を読み、対象を持ち越さない。
-	 * 完了時に目標が変わっていなければ、選択と利用者を同じ更新で公開する
+	 * 完了時に目標が変わっていなければ、選択と利用者を同じ更新で公開する。
+	 * 公開は、選択を共有する他のタブの土台が同じになってから行う。組み込み側は公開を見て読み書きを
+	 * 始めるため、それより前に、タブの間で共有するものを別のアカウントの資格で動かさない
 	 */
 	const syncBase = (): Promise<AccountResult<null>> => {
 		const run = async (): Promise<AccountResult<null>> => {
@@ -392,6 +467,7 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 			} catch (error) {
 				return { ok: false, error: { kind: 'auth', cause: toAuthError(error) } };
 			}
+			await persistence?.holdSelection(source ? goal : null);
 			if (target === goal) {
 				activeId = source ? goal : null;
 				user = source ? auth.currentUser : null;
@@ -418,13 +494,29 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		return result;
 	};
 
-	/** 選択を確定したことを記録する。タブの選択と最後に開いたアカウントは複数アカウント指定でだけ使う */
-	const rememberSelection = (id: string | null): void => {
-		if (!config.multiAccount) {
-			return;
+	/**
+	 * このタブで決めた選択へ移る。複製の前に選択を記録し、選択を共有する他のタブが並行して同じ
+	 * アカウントへ移れるようにする。失敗したら、記録がまだこの操作の値のときに限り元へ戻す
+	 */
+	const choose = async (id: string): Promise<AccountResult<null>> => {
+		const recorded = withStorage((storage) => storage.readActiveId());
+		announce(id);
+		const moved = await moveTo(id);
+		if (!moved.ok && withStorage((storage) => storage.readActiveId()) === id) {
+			announce(recorded);
 		}
-		withStorage((storage) => storage.writeActiveId(id));
-		if (id !== null) {
+		return moved;
+	};
+
+	/** 選択を記録する。選択の記録と最後に開いたアカウントは複数アカウント指定でだけ使う */
+	const announce = (id: string | null | undefined): void => {
+		if (config.multiAccount) {
+			withStorage((storage) => storage.writeActiveId(id));
+		}
+	};
+
+	const rememberLastOpened = (id: string): void => {
+		if (config.multiAccount) {
 			withStorage((storage) => storage.writeLastOpenedId(id));
 		}
 	};
@@ -488,7 +580,7 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 			withStorage((storage) => storage.writeSlot({ version: 1, id: slot.id, uid: signedIn.uid }));
 		}
 		const id = existing ?? slot.id;
-		const moved = await moveTo(id);
+		const moved = await choose(id);
 		operation = null;
 		return confirmSelection(id, moved);
 	};
@@ -513,12 +605,12 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 			return failure('not-signed-in');
 		}
 		operation = { kind: 'select', id };
-		const moved = await moveTo(id);
+		const moved = await choose(id);
 		operation = null;
 		return confirmSelection(id, moved);
 	};
 
-	/** 切り替えの結果を確かめて記録する。途中でログアウト・失効が届いていれば失敗とする */
+	/** 切り替えの結果を確かめ、最後に開いたアカウントとして記録する。途中でログアウト・失効が届いていれば失敗とする */
 	const confirmSelection = (
 		id: string,
 		moved: AccountResult<null>
@@ -530,7 +622,7 @@ export const createAuthStore = (auth: Auth, config: AuthConfig): AuthStore => {
 		if (!summary) {
 			return failure('not-signed-in');
 		}
-		rememberSelection(id);
+		rememberLastOpened(id);
 		return { ok: true, value: summary };
 	};
 

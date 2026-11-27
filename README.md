@@ -113,6 +113,7 @@ export const firestore = getFirestore(app);
 - The store switches the passed `Auth` to in-memory persistence, so each tab holds its own account in use. **Do not sign in or out with that `Auth` directly**; use the store
 - If you use the Auth emulator, **connect the `Auth` to it before passing it in**. The library connects its internal apps to the same emulator
 - `namespace` prefixes the keys `AuthSession` writes to `localStorage` and `sessionStorage`. Use a value no other app on the same origin uses. Passwords and tokens are never written
+- `syncAccountAcrossTabs` (optional) keeps the account in use the same in every tab. Without it, each tab has its own. See [Tabs and reloads](#tabs-and-reloads)
 
 ### Setting up routes
 
@@ -282,20 +283,34 @@ While unselected, the sign-in, sign-up, and password reset routes stay open: sig
 #### Tabs and reloads
 
 - Sign-in states are kept by the browser and **restored after reloads and restarts**
-- **Each tab has its own account in use.** Switching or signing out in one tab does not change the account in use in another (a sign-out does remove that account everywhere)
+- **By default, each tab has its own account in use.** Switching or signing out in one tab does not change the account in use in another (a sign-out does remove that account everywhere)
 - A new tab opens with the account of the tab it was opened from, or otherwise with the account last opened in this browser. A tab that had explicitly no account selected stays unselected
 - If the browser storage is not available, `store.storageStatus` is `'unavailable'`: everything works in the current tab, but nothing may be restored after a reload. Show a notice if that matters to your users
+
+##### The same account in use in every tab
+
+Add `syncAccountAcrossTabs` to keep **the same account in use in every tab** instead of one per tab. Use it when your tabs share something that must run as a single account, such as [Firestore's multi-tab cache](#data-access-and-switching-accounts).
+
+```svelte
+<AuthSession {store} namespace="my-app" syncAccountAcrossTabs />
+```
+
+- **Every tab follows.** When one tab switches, signs in, signs up, signs out, or picks an account in the chooser, the other tabs move to the same account (or to no account). To your app this looks the same as a switch made in that tab: `store.activeId` changes, so the code you already have for account changes runs. A tab that follows does not run your unsaved-data check; only the tab where the user acted does
+- A reloaded tab and a new tab open with the account the other tabs are using
+- **The new account is published only after every other tab has moved its `Auth` to it.** Your app starts reading and writing when `store.activeId` changes, so nothing is read or written as the new account while another tab is still on the previous one. Closed tabs are not waited for, and a tab that does not respond is waited for at most 2 seconds
+- A tab that cannot move to the chosen account (it does not hold it, or copying fails) becomes unselected instead of staying on the previous account
+- The wait uses the Web Locks API. On pages that are neither https nor localhost it is not available, and tabs follow without waiting
 
 ### Data access and switching accounts
 
 **Create Firestore, Functions, and Storage from your Firebase app once, as usual.** The library copies the account in use into the `Auth` you passed, so the same instances run as the account in use after every switch. Your data layer does not need to know about multiple accounts.
 
-**With multiple accounts, do not share Firestore's cache across tabs.** Each tab has its own account in use, but a Firestore created with `persistentLocalCache({ tabManager: persistentMultipleTabManager() })` talks to the server from one tab only, and that tab carries the listeners and writes of every other tab **as its own account**. In a tab that uses a different account:
+**With one account in use per tab (the default), do not share Firestore's cache across tabs.** Each tab has its own account in use, but a Firestore created with `persistentLocalCache({ tabManager: persistentMultipleTabManager() })` talks to the server from one tab only, and that tab carries the listeners and writes of every other tab **as its own account**. In a tab that uses a different account:
 
 - Listeners fail with `permission-denied`
 - Writes never reach the server. They pile up in `localStorage` (`firestore_mutations_*`) until it is full, and Firestore then stops with `QuotaExceededError`
 
-Which tab talks to the server changes when that tab sleeps or is closed, so the failure comes and goes. Firestore has no setting that shares the cache while each tab talks to the server as its own account. Create Firestore with a cache that stays inside the tab: the default `getFirestore(app)`, or `memoryLocalCache()`. With `multiAccount: false` every tab uses the same account, so this limit does not apply.
+Which tab talks to the server changes when that tab sleeps or is closed, so the failure comes and goes. Firestore has no setting that shares the cache while each tab talks to the server as its own account. Either create Firestore with a cache that stays inside the tab (the default `getFirestore(app)`, or `memoryLocalCache()`), or keep the same account in use in every tab with [`syncAccountAcrossTabs`](#the-same-account-in-use-in-every-tab), so that every tab sharing the cache runs as the same account. With `multiAccount: false` every tab uses the same account, so this limit does not apply.
 
 What does **not** switch by itself is what the host app already holds for the previous account:
 
@@ -541,7 +556,7 @@ The showcase and `test:emulator` / `test:e2e` use the Auth and Firestore emulato
 npm run emulators
 ```
 
-The showcase uses multiple accounts by default, with a user menu, an add-account dialog, a chooser dialog, and Firestore reads and writes for the account in use. Set `VITE_MULTI_ACCOUNT=false` to build it in single account mode, without any account list or chooser. `npm run test:e2e` runs the end-to-end tests in both modes.
+The showcase uses multiple accounts by default, with a user menu, an add-account dialog, a chooser dialog, and Firestore reads and writes for the account in use. Set `VITE_MULTI_ACCOUNT=false` to build it in single account mode, without any account list or chooser. Set `VITE_SYNC_ACCOUNT_ACROSS_TABS=true` to build it with the same account in use in every tab. `npm run test:e2e` runs the end-to-end tests in all three modes.
 
 ```bash
 VITE_MULTI_ACCOUNT=false npm run dev

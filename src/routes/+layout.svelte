@@ -6,6 +6,14 @@
 	import ShowcaseLayout from '#showcase/features/layout/ShowcaseLayout.svelte';
 	import ShowcasePending from '#showcase/features/layout/ShowcasePending.svelte';
 	import { authStore, multiAccount } from '#showcase/stores/auth';
+	import { syncAccountAcrossTabs } from '#showcase/stores/syncAccountAcrossTabs';
+
+	// 名前空間は指定ごとに分ける。複数アカウントの記録を単一アカウント指定で読むと、1件を残して他をログアウトする
+	const namespace = multiAccount
+		? syncAccountAcrossTabs
+			? 'showcase-synced'
+			: 'showcase'
+		: 'showcase-single';
 
 	let { children }: { children: Snippet } = $props();
 </script>
@@ -14,11 +22,8 @@
 	<ShowcasePending />
 {/snippet}
 
-<!--
-	ブラウザ保存とストアの寿命。根の配置に1つ置く。
-	名前空間は指定ごとに分ける。複数アカウントの記録を単一アカウント指定で読むと、1件を残して他をログアウトする
--->
-<AuthSession store={authStore} namespace={multiAccount ? 'showcase' : 'showcase-single'} />
+<!-- ブラウザ保存とストアの寿命。根の配置に1つ置く -->
+<AuthSession store={authStore} {namespace} {syncAccountAcrossTabs} />
 
 <ShowcaseLayout>
 	{#if page.url.searchParams.has('preview')}

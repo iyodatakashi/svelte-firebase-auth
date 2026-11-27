@@ -224,6 +224,13 @@ export interface AuthSessionProps {
 	readonly store: AuthStore;
 	/** 保存のキーの名前空間。同じオリジンの他の組み込み先と衝突させない */
 	readonly namespace: string;
+	/**
+	 * 選択中のアカウントを全タブでそろえるか。既定はそろえない。
+	 * - そろえない: 選択をタブごとに持つ。あるタブでの切り替えは、他のタブの選択を変えない
+	 * - そろえる: 選択をブラウザで1つ持つ。あるタブでの切り替えに、他のタブも従う。
+	 *   タブの間で共有するもの（Firestore の複数タブ共有キャッシュなど）が、1つのアカウントで動く
+	 */
+	readonly syncAccountAcrossTabs?: boolean;
 }
 
 /** 到達の制御。組み込み側は根の配置でこれを1つ置き、子を包む */
