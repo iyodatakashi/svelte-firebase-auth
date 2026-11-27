@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.0.8] - 2026-11-28
+
+### Added
+
+- `AuthSession` accepts `syncAccountAcrossTabs`, which keeps the account in use the same in every tab instead of one per tab. Every tab follows a switch, sign-in, or sign-out made in another tab, and the new account is published only after the other tabs have moved to it. This lets tabs share Firestore's multi-tab cache. Without the prop, each tab keeps its own account in use, as before.
+
+### Changed
+
+- Supports `firebase` 13 in addition to 12.
+- Requires `@sveltejs/kit` 3. Kit 2 is no longer supported.
+
+### Fixed
+
+- A tab no longer misses an account added in another tab when two notifications of the change arrive in a row.
+
 ## [0.0.7] - 2026-11-26
 
 ### Changed
