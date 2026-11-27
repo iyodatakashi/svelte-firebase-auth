@@ -75,7 +75,7 @@ describe('選択の後 — 要件 6.6, 6.7（multi-account-auth）', () => {
 
 		await expect.element(screen.getByText('保護された内容')).not.toBeInTheDocument();
 		await vi.waitFor(() =>
-			expect(vi.mocked(goto)).toHaveBeenCalledWith('/verify-email', { replaceState: true })
+			expect(vi.mocked(goto)).toHaveBeenCalledWith('/verify-email', { replace: true })
 		);
 	});
 });
@@ -105,9 +105,7 @@ describe('戻り先とアカウントの結びつき — 要件 6.10, 6.11（mul
 
 		switchTo(b);
 
-		await vi.waitFor(() =>
-			expect(vi.mocked(goto)).toHaveBeenCalledWith('/', { replaceState: true })
-		);
+		await vi.waitFor(() => expect(vi.mocked(goto)).toHaveBeenCalledWith('/', { replace: true }));
 		await expect.element(screen.getByText('保護された内容')).not.toBeInTheDocument();
 		expect(held()).toBeNull();
 	});
@@ -133,9 +131,7 @@ describe('戻り先とアカウントの結びつき — 要件 6.10, 6.11（mul
 		switchTo(b);
 		setStage(null);
 
-		await vi.waitFor(() =>
-			expect(vi.mocked(goto)).toHaveBeenCalledWith('/', { replaceState: true })
-		);
+		await vi.waitFor(() => expect(vi.mocked(goto)).toHaveBeenCalledWith('/', { replace: true }));
 		await expect.element(screen.getByText('保護された内容')).not.toBeInTheDocument();
 	});
 

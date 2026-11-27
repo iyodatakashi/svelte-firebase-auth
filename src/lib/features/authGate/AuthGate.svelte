@@ -93,7 +93,7 @@
 		}
 		redirectingTo = decision.to;
 		// 振り替えを履歴に残さない。残すと戻る操作で振り替え前へ戻り、ふたたび振り替えられる
-		void goto(decision.to, { replaceState: true });
+		void goto(decision.to, { replace: true });
 	});
 </script>
 

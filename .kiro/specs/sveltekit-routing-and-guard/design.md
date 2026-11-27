@@ -195,7 +195,7 @@ flowchart TB
 
 - **`unresolved` では遷移しない。** 「まだ分からない」を「サインインしていない」と扱うと、再読み込みのたびにサインインへ飛ばされる
 - **各段階は「その段階のための経路」を許す。** 許さないと、振り替え先がふたたび振り替えの対象になり遷移が止まらない
-- **振り替えは履歴に残さない**（`replaceState: true`）。残すと戻るボタンで振り替え前へ戻り、再び振り替えられる
+- **振り替えは履歴に残さない**（`replace: true`）。残すと戻るボタンで振り替え前へ戻り、再び振り替えられる
 
 ### サインイン後に元の経路へ戻る
 
@@ -444,7 +444,7 @@ export interface AuthGateProps {
 - **Postconditions**:
   - `wait` のあいだ `children` を描画せず、`pending` があればそれを描画する
   - `allow` のとき `children` を描画する
-  - `redirect` のとき `goto(to, { replaceState: true })` を行い、`returnTo` を保持または破棄する。**遷移が終わるまで `children` を描画しない**
+  - `redirect` のとき `goto(to, { replace: true })` を行い、`returnTo` を保持または破棄する。**遷移が終わるまで `children` を描画しない**
 - **Invariants**: 同じ行き先への振り替えを重ねて出さない
 
 ##### State Management
@@ -454,7 +454,7 @@ export interface AuthGateProps {
 
 **Implementation Notes**
 
-- Integration: 振り替えは `replaceState: true`。**利用者の操作による遷移（画面の導線）は通常どおり履歴へ積む**
+- Integration: 振り替えは `replace: true`。**利用者の操作による遷移（画面の導線）は通常どおり履歴へ積む**
 - Integration: 認証の経路（サインインなど）自体もこの包みの中に置かれる。`allow` と判定されるため描画される
 - Validation: **単体では試験しない**（ルーター無しでは `goto` が例外を投げ、`page.url` が空になる）。E2E で確かめる
 - Risks: 保持先の try/catch は単体では試験できない（ルーター無しでは `goto` が例外を投げる）。E2E が唯一の検証手段になる
